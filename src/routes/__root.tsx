@@ -77,13 +77,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Academy China 2026" },
-      { name: "description", content: "Academy China 2026 — Imersão executiva em IA aplicada." },
+      { title: "Academy China 2026 — Imersão executiva em IA aplicada" },
+      { name: "description", content: "Imersão executiva em IA aplicada na China. Vagas limitadas, edição 2026." },
       { name: "author", content: "Matter Academy" },
-      { property: "og:title", content: "Academy China 2026" },
-      { property: "og:description", content: "Imersão executiva em IA aplicada na China." },
+      { property: "og:title", content: "Academy China 2026 — Imersão executiva em IA aplicada" },
+      { property: "og:description", content: "Imersão executiva em IA aplicada na China. Vagas limitadas, edição 2026." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Academy China 2026 — Imersão executiva em IA aplicada" },
+      { name: "twitter:description", content: "Imersão executiva em IA aplicada na China. Vagas limitadas, edição 2026." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b5a8c160-972e-45a4-a3cf-2831b1a9821e/id-preview-18fe1206--13e78dc2-5c2e-4250-9d78-3101c6be1d25.lovable.app-1783375144089.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b5a8c160-972e-45a4-a3cf-2831b1a9821e/id-preview-18fe1206--13e78dc2-5c2e-4250-9d78-3101c6be1d25.lovable.app-1783375144089.png" },
     ],
     links: [
       {
