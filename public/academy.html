@@ -1387,23 +1387,7 @@
     });
   }
 
-  var heroForm = document.getElementById('hero-contact-form');
-  if (heroForm) {
-    heroForm.addEventListener('submit', function(e) {
-      e.preventDefault();
-      try {
-        var heroInputs = heroForm.querySelectorAll('input');
-        var mainForm = document.getElementById('contact-form');
-        if (mainForm && heroInputs.length >= 2) {
-          var mainName = mainForm.querySelector('input[type="text"]');
-          var mainEmail = mainForm.querySelector('input[type="email"]');
-          if (mainName) mainName.value = heroInputs[0].value;
-          if (mainEmail) mainEmail.value = heroInputs[1].value;
-        }
-        window.scrollTo({ top: document.getElementById('contato').offsetTop - 70, behavior: 'smooth' });
-      } catch (_) {}
-    });
-  }
+  // hero form submission is handled by the /api/public/leads script below
 })();
 </script>
 
