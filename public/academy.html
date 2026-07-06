@@ -1406,5 +1406,52 @@
   }
 })();
 </script>
+
+<script>
+(function(){
+  function handle(form, origem){
+    form.addEventListener('submit', async function(e){
+      e.preventDefault();
+      var inputs = form.querySelectorAll('input, textarea');
+      var payload = { origem: origem };
+      inputs.forEach(function(el){
+        var t = (el.type||'').toLowerCase();
+        if(t==='email') payload.email = el.value;
+        else if(t==='tel') payload.telefone = el.value;
+        else if(el.tagName.toLowerCase()==='textarea') payload.mensagem = el.value;
+        else if(t==='text'){
+          if(!payload.nome) payload.nome = el.value;
+          else if(!payload.empresa) payload.empresa = el.value;
+        }
+      });
+      var btn = form.querySelector('button[type=submit]');
+      var orig = btn ? btn.textContent : '';
+      if(btn){ btn.disabled = true; btn.textContent = 'Enviando...'; }
+      try {
+        var res = await fetch('/api/public/leads', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
+        if(res.ok){
+          if(btn){ btn.textContent = 'Recebido! ✓'; btn.style.background='#0a7a2f'; }
+          form.reset();
+          setTimeout(function(){ if(btn){ btn.textContent = orig; btn.disabled=false; btn.style.background=''; } }, 4000);
+        } else {
+          throw new Error('erro');
+        }
+      } catch(err){
+        if(btn){ btn.textContent = 'Erro. Tente novamente'; btn.disabled=false; }
+      }
+    });
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    var f1 = document.getElementById('hero-contact-form');
+    var f2 = document.getElementById('contact-form');
+    if(f1) handle(f1, 'hero');
+    if(f2) handle(f2, 'contato');
+  });
+})();
+</script>
 </body>
 </html>
