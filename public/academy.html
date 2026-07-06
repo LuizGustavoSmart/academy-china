@@ -1430,7 +1430,9 @@
     });
   }
   document.addEventListener('DOMContentLoaded', function(){
+    var f1 = document.getElementById('hero-contact-form');
     var f2 = document.getElementById('contact-form');
+    if(f1) handle(f1, 'hero');
     if(f2) handle(f2, 'contato');
   });
 })();
