@@ -1381,6 +1381,23 @@
 
 <script>
 (function(){
+  function showSuccess(form){
+    // If this is the second (main) contact form, swap for the pre-built success card.
+    if(form.id === 'contact-form'){
+      var wrap = document.getElementById('contact-form-wrap');
+      var ok = document.getElementById('contact-success');
+      if(wrap) wrap.style.display = 'none';
+      if(ok) ok.style.display = 'block';
+      return;
+    }
+    // Hero form: replace with a compact inline success block.
+    var msg = document.createElement('div');
+    msg.setAttribute('style','display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px 8px;gap:10px;');
+    msg.innerHTML = '<div style="width:44px;height:44px;border-radius:50%;background:#0a7a2f;display:flex;align-items:center;justify-content:center;"><span style="color:#fff;font-size:22px;line-height:1;">✓</span></div>'
+      + '<div style="font-family:\'Oswald\',sans-serif;font-weight:600;font-size:15px;text-transform:uppercase;color:#fff;">Mensagem enviada</div>'
+      + '<p style="margin:0;max-width:260px;font-family:\'Barlow\',sans-serif;font-size:12px;line-height:1.5;color:rgba(255,255,255,.7);">Obrigado! Nossa equipe entrará em contato em breve.</p>';
+    form.parentNode.replaceChild(msg, form);
+  }
   function handle(form, origem){
     form.addEventListener('submit', async function(e){
       e.preventDefault();
@@ -1406,14 +1423,13 @@
           body: JSON.stringify(payload)
         });
         if(res.ok){
-          if(btn){ btn.textContent = 'Recebido! ✓'; btn.style.background='#0a7a2f'; }
           form.reset();
-          setTimeout(function(){ if(btn){ btn.textContent = orig; btn.disabled=false; btn.style.background=''; } }, 4000);
+          showSuccess(form);
         } else {
           throw new Error('erro');
         }
       } catch(err){
-        if(btn){ btn.textContent = 'Erro. Tente novamente'; btn.disabled=false; }
+        if(btn){ btn.textContent = 'Erro. Tente novamente'; btn.disabled = false; }
       }
     });
   }
