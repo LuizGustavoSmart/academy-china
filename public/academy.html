@@ -35,6 +35,31 @@
     [data-g6]{grid-template-columns:1fr !important}
     [data-g5]{grid-template-columns:1fr !important}
   }
+  /* ===== rota · cidades: fundo fixo (sticky) + texto rolando por cima ===== */
+  .city-track{position:relative}
+  .city-pin{position:sticky;top:0;height:100vh;overflow:hidden;background:#141414}
+  .city-scroll{position:relative;margin-top:-100vh;z-index:2}
+  .city-screen{min-height:100vh;display:flex;align-items:center;padding:clamp(96px,13vh,150px) clamp(24px,6vw,110px)}
+  .cityname{max-width:min(560px,82vw)}
+  .city-card{max-width:640px;width:100%;background:rgba(10,10,10,.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:clamp(24px,3vw,40px)}
+  .city-kicker{display:flex;align-items:center;gap:11px;margin:0 0 18px;font-family:'Barlow',sans-serif;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.6);font-weight:600}
+  .city-kicker::before{content:"";width:24px;height:2px;background:#E30613}
+  .city-lead{margin:0;font-family:'Barlow',sans-serif;font-size:clamp(16px,1.7vw,20px);line-height:1.6;color:rgba(244,241,236,.9);font-weight:300}
+  .city-tags{list-style:none;margin:24px 0 0;padding:18px 0 0;border-top:1px solid rgba(255,255,255,.14)}
+  .city-tags li{display:flex;align-items:center;gap:12px;padding:10px 0;font-family:'Oswald',sans-serif;font-weight:500;font-size:15px;letter-spacing:.03em;text-transform:uppercase;color:#F4F1EC}
+  .city-tags li::before{content:"";width:6px;height:6px;background:#E30613;flex:none}
+  .city-roteiro-h{margin:0 0 8px;font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(28px,3.6vw,44px);text-transform:uppercase;line-height:1;color:#fff}
+  .city-roteiro-h small{display:block;margin-top:10px;font-family:'Barlow',sans-serif;font-weight:500;font-size:12px;letter-spacing:.24em;color:rgba(255,255,255,.55)}
+  .city-roteiro-sub{margin:0 0 22px;font-family:'Barlow',sans-serif;font-size:clamp(15px,1.6vw,18px);color:rgba(244,241,236,.82);font-weight:300}
+  .city-days{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:1px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.12);border-radius:8px;overflow:hidden}
+  .city-day{background:rgba(10,10,10,.74);padding:20px clamp(18px,2.4vw,26px);display:grid;grid-template-columns:66px 1fr;column-gap:18px;align-items:start}
+  .city-day .d-when{display:flex;flex-direction:column;gap:4px}
+  .city-day .d-date{font-family:'Oswald',sans-serif;font-weight:700;font-size:20px;line-height:1;color:#E30613}
+  .city-day .d-dow{font-family:'Barlow',sans-serif;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+  .city-day .d-body{min-width:0}
+  .city-day .d-title{margin:0 0 6px;font-family:'Oswald',sans-serif;font-weight:600;font-size:clamp(16px,1.8vw,19px);text-transform:uppercase;line-height:1.15;color:#fff}
+  .city-day .d-desc{margin:0;font-family:'Barlow',sans-serif;font-size:14.5px;line-height:1.55;color:rgba(244,241,236,.8);font-weight:300}
+  @media (max-width:560px){ .city-day{grid-template-columns:54px 1fr} }
   /* [data-reveal] elements are visible by default (no CSS hiding). Reveal-on-scroll is a
      pure JS Web Animations enhancement in the logic class — it never blocks first paint. */
 </style>
@@ -278,37 +303,162 @@
       </div>
     </div>
 
-    <!-- stacking full-screen city panels -->
+    <!-- pinned-background city tracks: foto fixa, texto rola por cima -->
     <div id="rota-cities" style="position:relative;">
-      <div class="citypanel" style="position:sticky;top:0;height:100vh;overflow:hidden;background:#141414;">
-        <div class="cityphoto" style="position:absolute;inset:0;background:url('/assets-academy/img-04.png') center/cover no-repeat;"></div>
-        <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,10,10,.88) 0%,rgba(10,10,10,.62) 34%,rgba(10,10,10,.15) 62%,rgba(10,10,10,0) 100%);"></div>
-        <div class="cityname" style="position:absolute;top:50%;left:clamp(24px,6vw,110px);transform:translateY(-50%);max-width:min(560px,80vw);">
-          <span style="display:block;font-family:'Oswald',sans-serif;font-weight:700;font-size:20px;color:#E30613;letter-spacing:.06em;margin-bottom:18px;will-change:opacity,transform;">01</span>
-          <h3 style="margin:0 0 18px;font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(52px,8vw,108px);line-height:.92;text-transform:uppercase;color:#fff;will-change:opacity,transform;">Pequim</h3>
-          <p style="margin:0;font-size:clamp(17px,2vw,24px);line-height:1.5;color:rgba(244,241,236,.82);max-width:440px;will-change:opacity,transform;">Capital política · escala de Estado.</p>
+
+      <!-- ============ 01 · PEQUIM ============ -->
+      <div class="city-track">
+        <div class="city-pin">
+          <div class="cityphoto" style="position:absolute;inset:0;background:url('/assets-academy/img-04.png') center/cover no-repeat;will-change:transform;"></div>
+          <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,10,10,.9) 0%,rgba(10,10,10,.66) 38%,rgba(10,10,10,.3) 66%,rgba(10,10,10,.55) 100%);"></div>
+        </div>
+        <div class="city-scroll">
+          <!-- tela inicial (mantida) -->
+          <div class="city-screen">
+            <div class="cityname">
+              <span style="display:block;font-family:'Oswald',sans-serif;font-weight:700;font-size:20px;color:#E30613;letter-spacing:.06em;margin-bottom:18px;will-change:opacity,transform;">01</span>
+              <h3 style="margin:0 0 18px;font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(52px,8vw,108px);line-height:.92;text-transform:uppercase;color:#fff;will-change:opacity,transform;">Pequim</h3>
+              <p style="margin:0;font-size:clamp(17px,2vw,24px);line-height:1.5;color:rgba(244,241,236,.82);max-width:440px;will-change:opacity,transform;">Capital política · escala de Estado.</p>
+            </div>
+          </div>
+          <!-- bloco 1 -->
+          <div class="city-screen">
+            <div class="city-card" data-reveal="">
+              <div class="city-kicker">Pequim · escala de Estado</div>
+              <p class="city-lead">Pequim abre a missão porque é onde a escala chinesa vira decisão de Estado: a cidade que define como 1,4 bilhão de pessoas vão usar IA. Começamos pelo símbolo — a Cidade Proibida, seis séculos de poder centralizado — e terminamos dentro das plataformas que operam essa escala hoje: Kwai e Meituan, com a leitura diplomática da Embaixada do Brasil no meio do caminho.</p>
+              <ul class="city-tags">
+                <li>Waldorf Astoria · 4 noites</li>
+                <li>Cidade Proibida</li>
+                <li>Muralha · Mutianyu</li>
+                <li>Embaixada + Kwai + Meituan</li>
+              </ul>
+            </div>
+          </div>
+          <!-- bloco 2 · roteiro -->
+          <div class="city-screen">
+            <div class="city-card">
+              <h4 class="city-roteiro-h" data-reveal="">Roteiro<small>· Pequim · dia a dia</small></h4>
+              <p class="city-roteiro-sub" data-reveal="">Quatro dias pra calibrar a régua.</p>
+              <ul class="city-days">
+                <li class="city-day" data-reveal="">
+                  <div class="d-when"><span class="d-date">30.10</span><span class="d-dow">sex</span></div>
+                  <div class="d-body"><h5 class="d-title">Welcome — a missão começa</h5><p class="d-desc">Check-in no Waldorf Astoria ao longo do dia · 19:00 welcome drinks — o grupo se conhece antes da maratona começar. Chegue por qualquer rota; daqui em diante a logística é nossa.</p></div>
+                </li>
+                <li class="city-day" data-reveal="" data-reveal-delay="1">
+                  <div class="d-when"><span class="d-date">31.10</span><span class="d-dow">sáb</span></div>
+                  <div class="d-body"><h5 class="d-title">A China milenar — e o varejo do futuro na mesma rua</h5><p class="d-desc">Praça da Paz Celestial e Cidade Proibida por dentro · Pearl Market · Wangfujing, a "5ª Avenida" de Pequim, com as flagships Huawei e Apple frente a frente.</p></div>
+                </li>
+                <li class="city-day" data-reveal="" data-reveal-delay="2">
+                  <div class="d-when"><span class="d-date">01.11</span><span class="d-dow">dom</span></div>
+                  <div class="d-body"><h5 class="d-title">Muralha da China · Mutianyu</h5><p class="d-desc">O trecho mais bonito da Grande Muralha, longe das multidões · almoço no Brickyard, com a muralha na janela · noite livre.</p></div>
+                </li>
+                <li class="city-day" data-reveal="" data-reveal-delay="3">
+                  <div class="d-when"><span class="d-date">02.11</span><span class="d-dow">seg</span></div>
+                  <div class="d-body"><h5 class="d-title">Dia de missão: Estado + plataformas</h5><p class="d-desc">Embaixada do Brasil pela manhã · Kwai à tarde · Meituan no fim do dia · jantar no 1949 — pato laqueado, casa estrelada.</p></div>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="citypanel" style="position:sticky;top:0;height:100vh;overflow:hidden;background:#141414;">
-        <div class="cityphoto" style="position:absolute;inset:0;background:url('/assets-academy/img-05.png') center/cover no-repeat;"></div>
-        <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,10,10,.88) 0%,rgba(10,10,10,.62) 34%,rgba(10,10,10,.15) 62%,rgba(10,10,10,0) 100%);"></div>
-        <div class="cityname" style="position:absolute;top:50%;left:clamp(24px,6vw,110px);transform:translateY(-50%);max-width:min(560px,80vw);">
-          <span style="display:block;font-family:'Oswald',sans-serif;font-weight:700;font-size:20px;color:#E30613;letter-spacing:.06em;margin-bottom:18px;will-change:opacity,transform;">02</span>
-          <h3 style="margin:0 0 18px;font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(52px,8vw,108px);line-height:.92;text-transform:uppercase;color:#fff;will-change:opacity,transform;">Xangai</h3>
-          <p style="margin:0;font-size:clamp(17px,2vw,24px);line-height:1.5;color:rgba(244,241,236,.82);max-width:440px;will-change:opacity,transform;">Capital financeira · IA aplicada a setores.</p>
+      <!-- ============ 02 · XANGAI ============ -->
+      <div class="city-track">
+        <div class="city-pin">
+          <div class="cityphoto" style="position:absolute;inset:0;background:url('/assets-academy/img-05.png') center/cover no-repeat;will-change:transform;"></div>
+          <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,10,10,.9) 0%,rgba(10,10,10,.66) 38%,rgba(10,10,10,.3) 66%,rgba(10,10,10,.55) 100%);"></div>
+        </div>
+        <div class="city-scroll">
+          <div class="city-screen">
+            <div class="cityname">
+              <span style="display:block;font-family:'Oswald',sans-serif;font-weight:700;font-size:20px;color:#E30613;letter-spacing:.06em;margin-bottom:18px;will-change:opacity,transform;">02</span>
+              <h3 style="margin:0 0 18px;font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(52px,8vw,108px);line-height:.92;text-transform:uppercase;color:#fff;will-change:opacity,transform;">Xangai</h3>
+              <p style="margin:0;font-size:clamp(17px,2vw,24px);line-height:1.5;color:rgba(244,241,236,.82);max-width:440px;will-change:opacity,transform;">Capital financeira · IA aplicada a setores.</p>
+            </div>
+          </div>
+          <div class="city-screen">
+            <div class="city-card" data-reveal="">
+              <div class="city-kicker">Xangai · IA aplicada a setores</div>
+              <p class="city-lead">Chegamos de trem-bala — 1.220 km em 4h37 — e entramos na cidade onde a IA encontra o resto da economia: saúde (United Imaging), infraestrutura (Huawei), comércio exterior (BSI Logistics), governança (China-BRICS AI Center) e direito (East Concord). Xangai mostra o que acontece quando tecnologia deixa de ser setor e vira camada de tudo.</p>
+              <ul class="city-tags">
+                <li>Mandarin Oriental · 2 noites</li>
+                <li>Bund &amp; Jazz Bar</li>
+                <li>Yu Garden</li>
+                <li>UIH + Huawei + BRICS AI + BSI</li>
+              </ul>
+            </div>
+          </div>
+          <div class="city-screen">
+            <div class="city-card">
+              <h4 class="city-roteiro-h" data-reveal="">Roteiro<small>· Xangai · dia a dia</small></h4>
+              <p class="city-roteiro-sub" data-reveal="">Três dias na velocidade de Xangai.</p>
+              <ul class="city-days">
+                <li class="city-day" data-reveal="">
+                  <div class="d-when"><span class="d-date">03.11</span><span class="d-dow">ter</span></div>
+                  <div class="d-body"><h5 class="d-title">Trem-bala + saúde de fronteira</h5><p class="d-desc">09:00 Fuxing Pequim→Xangai a 350 km/h · visita à United Imaging Healthcare · check-in Mandarin Oriental · noite no Bund: caminhada pela Nanjing Lu e jazz no Fairmont Peace Hotel, o bar que toca desde 1929.</p></div>
+                </li>
+                <li class="city-day" data-reveal="" data-reveal-delay="1">
+                  <div class="d-when"><span class="d-date">04.11</span><span class="d-dow">qua</span></div>
+                  <div class="d-body"><h5 class="d-title">Logística, BRICS e o stack soberano</h5><p class="d-desc">BSI Logistics pela manhã · China-BRICS AI Center à tarde · Huawei no fim do dia · jantar no M on the Bund, com o rio Huangpu na janela.</p></div>
+                </li>
+                <li class="city-day" data-reveal="" data-reveal-delay="2">
+                  <div class="d-when"><span class="d-date">05.11</span><span class="d-dow">qui</span></div>
+                  <div class="d-body"><h5 class="d-title">Da Xangai Ming à Hangzhou dos dragões</h5><p class="d-desc">Yu Garden, o jardim clássico da dinastia Ming · East Concord Law Firm com o Dr. Xudong Ni: como estruturar juridicamente uma operação na China · 3h de estrada · 17:00 check-in no Fly Zoo Hotel.</p></div>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="citypanel" style="position:sticky;top:0;height:100vh;overflow:hidden;background:#141414;">
-        <div class="cityphoto" style="position:absolute;inset:0;background:url('/assets-academy/img-06.png') center/cover no-repeat;"></div>
-        <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,10,10,.88) 0%,rgba(10,10,10,.62) 34%,rgba(10,10,10,.15) 62%,rgba(10,10,10,0) 100%);"></div>
-        <div class="cityname" style="position:absolute;top:50%;left:clamp(24px,6vw,110px);transform:translateY(-50%);max-width:min(560px,80vw);">
-          <span style="display:block;font-family:'Oswald',sans-serif;font-weight:700;font-size:20px;color:#E30613;letter-spacing:.06em;margin-bottom:18px;will-change:opacity,transform;">03</span>
-          <h3 style="margin:0 0 18px;font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(52px,8vw,108px);line-height:.92;text-transform:uppercase;color:#fff;will-change:opacity,transform;">Hangzhou</h3>
-          <p style="margin:0;font-size:clamp(17px,2vw,24px);line-height:1.5;color:rgba(244,241,236,.82);max-width:440px;will-change:opacity,transform;">Capital tecnológica · ecossistema de plataformas.</p>
+      <!-- ============ 03 · HANGZHOU ============ -->
+      <div class="city-track">
+        <div class="city-pin">
+          <div class="cityphoto" style="position:absolute;inset:0;background:url('/assets-academy/img-06.png') center/cover no-repeat;will-change:transform;"></div>
+          <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,10,10,.9) 0%,rgba(10,10,10,.66) 38%,rgba(10,10,10,.3) 66%,rgba(10,10,10,.55) 100%);"></div>
+        </div>
+        <div class="city-scroll">
+          <div class="city-screen">
+            <div class="cityname">
+              <span style="display:block;font-family:'Oswald',sans-serif;font-weight:700;font-size:20px;color:#E30613;letter-spacing:.06em;margin-bottom:18px;will-change:opacity,transform;">03</span>
+              <h3 style="margin:0 0 18px;font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(52px,8vw,108px);line-height:.92;text-transform:uppercase;color:#fff;will-change:opacity,transform;">Hangzhou</h3>
+              <p style="margin:0;font-size:clamp(17px,2vw,24px);line-height:1.5;color:rgba(244,241,236,.82);max-width:440px;will-change:opacity,transform;">Capital tecnológica · ecossistema de plataformas.</p>
+            </div>
+          </div>
+          <div class="city-screen">
+            <div class="city-card" data-reveal="">
+              <div class="city-kicker">Hangzhou · onde a próxima China nasce</div>
+              <p class="city-lead">Hangzhou é a cena tech mais comentada da China hoje: a cidade dos "seis dragõezinhos" — a geração de deep techs que inclui a DeepSeek e a Unitree — e o quintal da Alibaba. Plataforma, visão computacional e robótica nascendo no mesmo quarteirão. Fechamos a missão com o dia mais denso do roteiro inteiro.</p>
+              <ul class="city-tags">
+                <li>Fly Zoo Hotel · 2 noites</li>
+                <li>West Lake</li>
+                <li>Alibaba + Dahua + Unitree · num só dia</li>
+              </ul>
+            </div>
+          </div>
+          <div class="city-screen">
+            <div class="city-card">
+              <h4 class="city-roteiro-h" data-reveal="">Roteiro<small>· Hangzhou · dia a dia</small></h4>
+              <p class="city-roteiro-sub" data-reveal="">O fecho — e o dia mais denso da missão.</p>
+              <ul class="city-days">
+                <li class="city-day" data-reveal="">
+                  <div class="d-when"><span class="d-date">05.11</span><span class="d-dow">qui</span></div>
+                  <div class="d-body"><h5 class="d-title">Transição para Hangzhou</h5><p class="d-desc">08:00 check-out · 09:00 Yu Garden · 11:30 East Concord Law Firm com o Dr. Xudong Ni · lunch box · viagem de ônibus até Hangzhou · 17:00 check-in no Fly Zoo Hotel.</p></div>
+                </li>
+                <li class="city-day" data-reveal="" data-reveal-delay="1">
+                  <div class="d-when"><span class="d-date">06.11</span><span class="d-dow">sex</span></div>
+                  <div class="d-body"><h5 class="d-title">O dia mais denso: Alibaba, Dahua e Unitree</h5><p class="d-desc">Visita à Alibaba · almoço no Cuckoo Wasp Restaurant (10 min da Dahua) · visita à Dahua · visita à Unitree · jantar no Yaka Restaurant / Hotwoods.</p></div>
+                </li>
+                <li class="city-day" data-reveal="" data-reveal-delay="2">
+                  <div class="d-when"><span class="d-date">07.11</span><span class="d-dow">sáb</span></div>
+                  <div class="d-body"><h5 class="d-title">Dia livre e retorno</h5><p class="d-desc">Dia livre · 19:00 saída para o Aeroporto de Hangzhou (HGH) · 00:10/06:00 voo de Xangai para Dubai.</p></div>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
+
     </div>
   </section>
 
@@ -925,7 +1075,7 @@
     const nine = document.getElementById('rota-nine');
     const heads = track ? Array.from(track.querySelectorAll('[data-rota-head]')) : [];
     const numBlock = track ? track.querySelector('[data-rota-num]') : null;
-    const panels = Array.from(document.querySelectorAll('#rota-cities .citypanel'));
+    const cityTracks = Array.from(document.querySelectorAll('#rota-cities .city-track'));
 
     const clamp = (v) => Math.max(0, Math.min(1, v));
     const easeOut = (x) => 1 - Math.pow(1 - x, 3);
@@ -934,8 +1084,15 @@
       if (track) { track.style.height = 'auto'; }
       if (stage) { stage.style.position = 'static'; stage.style.height = 'auto'; stage.style.overflow = 'visible'; }
       if (nine) nine.textContent = '9';
-      // panels: keep sticky stacking (pure CSS, works without JS reveal); just show content
-      panels.forEach((p) => { const c = p.querySelector('.cityname'); if (c) { c.style.opacity = 1; c.style.transform = 'translateY(-50%)'; Array.from(c.children).forEach((k) => { k.style.opacity = 1; k.style.transform = 'none'; }); } });
+      // reduced motion / no JS: collapse pinned scroll into a plain vertical document
+      cityTracks.forEach((ct) => {
+        const pin = ct.querySelector('.city-pin');
+        const scroll = ct.querySelector('.city-scroll');
+        if (pin) { pin.style.position = 'static'; pin.style.height = '68vh'; }
+        if (scroll) { scroll.style.marginTop = '0'; }
+        const intro = ct.querySelector('.cityname');
+        if (intro) Array.from(intro.children).forEach((k) => { k.style.opacity = 1; k.style.transform = 'none'; });
+      });
       return;
     }
 
@@ -964,19 +1121,17 @@
       applyIntro(p);
     };
 
-    // --- city panels: text surges in staggered (num → name → phrase) as each rises into view + slow photo zoom ---
+    // --- city tracks: intro title surges in (num → name → phrase); photo eases a slow zoom while pinned ---
     const applyPanels = () => {
       const vh = window.innerHeight;
-      panels.forEach((panel) => {
-        const rect = panel.getBoundingClientRect();
-        const content = panel.querySelector('.cityname');
-        const photo = panel.querySelector('.cityphoto');
-        // enter: 0 while fully below, 1 once it reaches the top band
+      cityTracks.forEach((ct) => {
+        const rect = ct.getBoundingClientRect();
+        const intro = ct.querySelector('.cityname');
+        const photo = ct.querySelector('.cityphoto');
+        // enter: 0 while fully below, 1 once the intro screen reaches the top band
         const enter = clamp((vh - rect.top) / (vh * 0.72));
-        if (content) {
-          content.style.opacity = 1;
-          content.style.transform = 'translateY(-50%)';
-          const kids = Array.from(content.children);
+        if (intro) {
+          const kids = Array.from(intro.children);
           const per = 0.16;
           const dur = 0.62;
           kids.forEach((k, i) => {
@@ -986,7 +1141,10 @@
           });
         }
         if (photo) {
-          photo.style.transform = 'scale(' + (1.12 - 0.12 * easeOut(enter)) + ')';
+          // slow Ken-Burns zoom keyed to scroll progress through the (tall) track
+          const h = ct.offsetHeight - vh;
+          const prog = h > 0 ? clamp(-rect.top / h) : 0;
+          photo.style.transform = 'scale(' + (1.14 - 0.10 * easeOut(clamp(prog * 1.35))) + ')';
         }
       });
     };
