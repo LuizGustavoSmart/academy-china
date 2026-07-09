@@ -153,6 +153,103 @@
   .cta-inline--dark{background:#000;color:#fff}
   .cta-inline--dark:hover{background:#2a2a2a}
   .cta-inline-wrap{margin-top:24px}
+  .cal-title-break{display:none}
+  /* ======================================================================
+     AJUSTES SOMENTE MOBILE (<=560px). Nada aqui afeta o desktop: são regras
+     dentro de media query que só ativam em telas estreitas.
+     ====================================================================== */
+  @media (max-width:560px){
+    /* --- header: as duas imagens cabendo bem --- */
+    #site-header{gap:12px}
+    #site-header a img{height:32px !important}
+    #site-header [data-partners]{height:12px !important}
+
+    /* --- hero: 3 estatísticas na mesma linha --- */
+    #hero-stats{flex-wrap:nowrap !important;gap:0 9px !important;margin-bottom:16px !important}
+    #hero-stats > div{gap:5px !important}
+    #hero-stats > div > span:nth-child(1){font-size:19px !important}
+    #hero-stats > div > span:nth-child(2){font-size:8.5px !important;letter-spacing:.08em !important;line-height:1.15 !important}
+    #hero-stats > span{height:18px !important}
+
+    /* --- hero: formulário menor (altura e largura) --- */
+    #hero-form-card{max-width:320px;margin-left:auto;margin-right:auto;padding:12px !important}
+    #hero-form-card form > div{gap:7px !important}
+    #hero-form-card [data-g2]{grid-template-columns:1fr 1fr !important;gap:8px !important}
+    #hero-form-card input,#hero-form-card textarea{padding:7px 9px !important;font-size:12px !important}
+    #hero-form-card textarea{min-height:44px}
+
+    /* --- proposta de valor: 6 blocos em 2 colunas --- */
+    #grid-stage [data-g3]{grid-template-columns:repeat(2,1fr) !important}
+    #grid-stage .gblock{padding:16px 12px !important}
+    #grid-stage .gblock h3{font-size:16px !important;margin:8px 0 6px !important}
+    #grid-stage .gblock p{font-size:12px !important;line-height:1.42 !important}
+    #grid-stage .gblock > span{font-size:12px !important}
+    #grid-stage .gblock:last-child p{font-size:14px !important}
+
+    /* --- calendário: 3 marcos na mesma linha --- */
+    #cal-stage{padding-left:16px !important;padding-right:16px !important}
+    #cal-stage [data-g3]{grid-template-columns:repeat(3,1fr) !important;gap:10px !important}
+    #cal-stage .cblock{padding-top:16px !important}
+    #cal-stage .cblock > div:nth-child(1){font-size:9px !important;letter-spacing:.1em !important;margin-bottom:6px !important}
+    #cal-stage .cblock > div:nth-child(2) > span:nth-child(1){font-size:34px !important}
+    #cal-stage .cblock > div:nth-child(2) > span:nth-child(2){font-size:12px !important}
+    #cal-stage .cblock > div:nth-child(2){gap:4px !important}
+    #cal-stage .cblock > div:nth-child(3){font-size:11px !important;margin-top:8px !important}
+
+    /* --- empresas e instituições: 3 colunas, blocos menores (logo mantém tamanho) --- */
+    .cal-logos{grid-template-columns:repeat(3,1fr) !important;gap:8px !important}
+    .cal-logo-block{padding:10px 6px !important}
+    .cal-logo-name{font-size:12.5px !important}
+    .cal-logo-word{font-size:12px !important}
+    .cal-logo-sub{font-size:10.5px !important;margin-top:5px !important;letter-spacing:.02em !important}
+
+    /* --- curadoria cena 2 ("A mente por trás da imersão"): tudo cabe em 100vh --- */
+    #cur2-stage > div{padding-top:84px !important}
+    #cur2-stage [data-split]{gap:18px !important}
+    #cur-photo > div:nth-child(1){height:150px !important}
+    #cur-photo > div:nth-child(1) img{object-position:center 18% !important}
+    #cur-photo > div:nth-child(2){padding:14px !important}
+    #cur-photo h3{font-size:17px !important;margin-bottom:2px !important}
+    #cur-photo p{font-size:11px !important}
+    #cur-kicker{font-size:11px !important;margin-bottom:8px !important}
+    #cur-bio1,#cur-bio2{font-size:12.5px !important;line-height:1.45 !important;margin-bottom:10px !important}
+    #cur-g2{grid-template-columns:1fr !important}
+    #cur-g2 > div{padding:10px !important;font-size:10.5px !important;line-height:1.4 !important}
+    #cur-cta{margin-top:12px !important}
+
+    /* --- pacote: incluso e não incluso empilhados (como no desktop) --- */
+    .pkg-col-head{font-size:15px !important;gap:8px !important}
+    .pkg-badge{width:18px !important;height:18px !important;font-size:10px !important}
+    .pkg-item{grid-template-columns:20px 1fr !important;gap:8px !important;padding:9px 0 !important}
+    .pkg-item strong{font-size:12px !important;line-height:1.2 !important}
+    .pkg-item span{font-size:10.5px !important}
+    .pkg-mark{font-size:12px !important}
+
+    /* --- proposta: texto → blocos com bem menos scroll --- */
+    #prop-track{height:120vh !important}
+    #grid-track{height:220vh !important}
+
+    /* --- calendário: seção começa mais cedo, título quebra linha, sem os textos pequenos --- */
+    #cal-track{height:118vh !important}
+    #cal-stage{padding-top:40px !important}
+    .cal-title-break{display:block !important}
+    .cblock-kicker{display:none !important}
+
+    /* --- cidades: descrição → roteiro com menos scroll --- */
+    .city-screen--desc{min-height:58vh !important}
+
+    /* --- hospedagem: título/abertura um pouco mais longa --- */
+    .hoteis-intro{min-height:60vh !important}
+
+    /* --- hotéis: seção de cada hotel mais curta (fundo com menos percurso de zoom) --- */
+    .city-screen--hotel{min-height:125vh !important}
+
+    /* --- "Experiências que fecham a missão" → Muralha com bem menos scroll --- */
+    #exp-title-track{height:62vh !important}
+
+    /* --- curadoria → "a mente por trás da imersão" com menos scroll --- */
+    #cur1-track{height:128vh !important}
+  }
   /* [data-reveal] elements are visible by default (no CSS hiding). Reveal-on-scroll is a
      pure JS Web Animations enhancement in the logic class — it never blocks first paint. */
 </style>
@@ -204,7 +301,7 @@
             Imersão executiva para líderes brasileiros <strong style="font-weight:600;color:#fff;">verem, entenderem e traduzirem</strong> a China que já opera com IA.
           </p>
 
-          <div data-reveal="" data-reveal-delay="3" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin-bottom:18px;">
+          <div id="hero-stats" data-reveal="" data-reveal-delay="3" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin-bottom:18px;">
             <div style="display:flex;align-items:baseline;gap:7px;">
               <span style="font-family:'Oswald',sans-serif;font-weight:700;font-size:26px;line-height:1;color:#fff;">9</span>
               <span style="font-family:'Barlow',sans-serif;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.6);">dias em<br>solo chinês</span>
@@ -350,7 +447,7 @@
         <div style="max-width:1220px;margin:0 auto;width:100%;">
           <div id="cal-label" data-cal-head="" style="display:flex;align-items:center;gap:11px;margin-bottom:22px;">
             <span style="width:26px;height:2px;background:#E30613;"></span>
-            <span style="font-family:'Barlow',sans-serif;font-size:12.5px;letter-spacing:.34em;text-transform:uppercase;color:#E30613;font-weight:600;">Calendário da missão · Brasil → China → Brasil</span>
+            <span style="font-family:'Barlow',sans-serif;font-size:12.5px;letter-spacing:.34em;text-transform:uppercase;color:#E30613;font-weight:600;">Calendário da missão ·<br class="cal-title-break"> Brasil → China → Brasil</span>
           </div>
           <h2 data-cal-head="" style="margin:0 0 60px;font-family:'Oswald',sans-serif;font-weight:600;font-size:clamp(30px,4.6vw,58px);line-height:1.04;text-transform:uppercase;">Três marcos. <span style="color:#E30613;">11 portas abertas.</span></h2>
 
@@ -358,17 +455,17 @@
             <div id="cal-baseline" style="position:absolute;top:0;left:0;right:0;height:2px;background:rgba(0,0,0,.12);"></div>
             <div id="cal-line" style="position:absolute;top:0;left:0;height:2px;background:#E30613;width:0%;will-change:width;"></div>
             <div class="cblock" style="padding-top:22px;will-change:opacity,transform;">
-              <div style="font-family:'Barlow',sans-serif;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:#6e6a63;margin-bottom:10px;">Embarque · Outubro</div>
+              <div class="cblock-kicker" style="font-family:'Barlow',sans-serif;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:#6e6a63;margin-bottom:10px;">Embarque · Outubro</div>
               <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-family:'Oswald',sans-serif;font-weight:700;font-size:76px;line-height:.9;">28</span><span style="font-family:'Oswald',sans-serif;font-weight:600;font-size:20px;color:#E30613;">OUT</span></div>
               <div style="margin-top:14px;font-family:'Oswald',sans-serif;font-weight:600;font-size:19px;text-transform:uppercase;">Saída · Brasil</div>
             </div>
             <div class="cblock" style="padding-top:22px;will-change:opacity,transform;">
-              <div style="font-family:'Barlow',sans-serif;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:#6e6a63;margin-bottom:10px;">Chegada · Início da imersão</div>
+              <div class="cblock-kicker" style="font-family:'Barlow',sans-serif;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:#6e6a63;margin-bottom:10px;">Chegada · Início da imersão</div>
               <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-family:'Oswald',sans-serif;font-weight:700;font-size:76px;line-height:.9;color:#E30613;">30</span><span style="font-family:'Oswald',sans-serif;font-weight:600;font-size:20px;color:#E30613;">OUT</span></div>
               <div style="margin-top:14px;font-family:'Oswald',sans-serif;font-weight:600;font-size:19px;text-transform:uppercase;">Chegada · China</div>
             </div>
             <div class="cblock" style="padding-top:22px;will-change:opacity,transform;">
-              <div style="font-family:'Barlow',sans-serif;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:#6e6a63;margin-bottom:10px;">Retorno · Novembro</div>
+              <div class="cblock-kicker" style="font-family:'Barlow',sans-serif;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:#6e6a63;margin-bottom:10px;">Retorno · Novembro</div>
               <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-family:'Oswald',sans-serif;font-weight:700;font-size:76px;line-height:.9;">09</span><span style="font-family:'Oswald',sans-serif;font-weight:600;font-size:20px;color:#E30613;">NOV</span></div>
               <div style="margin-top:14px;font-family:'Oswald',sans-serif;font-weight:600;font-size:19px;text-transform:uppercase;">Retorno · Brasil</div>
             </div>
@@ -505,7 +602,7 @@
             </div>
           </div>
           <!-- bloco 1 -->
-          <div class="city-screen">
+          <div class="city-screen city-screen--desc">
             <div class="city-card" data-reveal="">
               <div class="city-kicker">Pequim · escala de Estado</div>
               <p class="city-lead">Pequim abre a missão porque é onde a escala chinesa vira decisão de Estado: a cidade que define como 1,4 bilhão de pessoas vão usar IA. Começamos pelo símbolo — a Cidade Proibida, seis séculos de poder centralizado — e terminamos dentro das plataformas que operam essa escala hoje: Kwai e Meituan, com a leitura diplomática da Embaixada do Brasil no meio do caminho.</p>
@@ -565,7 +662,7 @@
               <div class="cta-inline-wrap" style="will-change:opacity,transform;"><a href="#topo" class="cta-inline">Quero participar →</a></div>
             </div>
           </div>
-          <div class="city-screen">
+          <div class="city-screen city-screen--desc">
             <div class="city-card" data-reveal="">
               <div class="city-kicker">Xangai · IA aplicada a setores</div>
               <p class="city-lead">Chegamos de trem-bala — 1.220 km em 4h37 — e entramos na cidade onde a IA encontra o resto da economia: saúde (United Imaging), infraestrutura (Huawei), comércio exterior (BSI Logistics), governança (China-BRICS AI Center) e direito (East Concord). Xangai mostra o que acontece quando tecnologia deixa de ser setor e vira camada de tudo.</p>
@@ -620,7 +717,7 @@
               <div class="cta-inline-wrap" style="will-change:opacity,transform;"><a href="#topo" class="cta-inline">Tenho interesse →</a></div>
             </div>
           </div>
-          <div class="city-screen">
+          <div class="city-screen city-screen--desc">
             <div class="city-card" data-reveal="">
               <div class="city-kicker">Hangzhou · onde a próxima China nasce</div>
               <p class="city-lead">Hangzhou é a cena tech mais comentada da China hoje: a cidade dos "seis dragõezinhos" — a geração de deep techs que inclui a DeepSeek e a Unitree — e o quintal da Alibaba. Plataforma, visão computacional e robótica nascendo no mesmo quarteirão. Fechamos a missão com o dia mais denso do roteiro inteiro.</p>
@@ -887,12 +984,12 @@
             <li class="pkg-item"><span class="pkg-mark">03</span><div><strong>Bebidas alcoólicas</strong><span>consumo individual</span></div></li>
             <li class="pkg-item"><span class="pkg-mark">04</span><div><strong>Visto, se aplicável</strong><span>hoje: até 30 dias sem visto</span></div></li>
           </ul>
-          <div class="cta-inline-wrap">
-            <a href="#topo" class="cta-inline">Quero conversar →</a>
-          </div>
         </div>
       </div>
       <div class="pkg-note" data-reveal="">Brasileiros podem permanecer até 30 dias na China sem visto. Emolumentos só se aplicam caso a regra mude até a missão.</div>
+      <div class="cta-inline-wrap">
+        <a href="#topo" class="cta-inline">Quero conversar →</a>
+      </div>
     </div>
 
     <!-- PART 2 · "O participante sai com" — topics rise from bottom and stack, pinned -->
@@ -1062,8 +1159,17 @@
       window.addEventListener('scroll', checkReveals, { passive: true });
       window.addEventListener('resize', checkReveals);
       self._checkReveals = checkReveals;
-      // global safety net: anything never scrolled to still commits its end frame
-      setTimeout(() => { pending.forEach(animateIn); pending = []; window.removeEventListener('scroll', checkReveals); }, 1600);
+      // global safety net: only for the case scroll ticking never happens at all (e.g. a
+      // hidden/headless document). In a real, visible browser tab we always rely on the
+      // genuine scroll position check above, so content only reveals as the user actually
+      // scrolls down to it — not all at once shortly after page load.
+      setTimeout(() => {
+        if (document.hidden) {
+          pending.forEach(animateIn);
+          pending = [];
+          window.removeEventListener('scroll', checkReveals);
+        }
+      }, 1600);
     }
 
     // ---- header + progress on scroll ----
@@ -1295,8 +1401,10 @@
       // this track can only become visible once the previous (proposta text) pin
       // fully releases, so the head-start needs to be a full screen — that way
       // progress is already ticking the instant the release happens, with no
-      // extra dead scroll added on top of it.
-      const pre = vh * 1.0;
+      // extra dead scroll added on top of it. On narrow (mobile) screens we
+      // overshoot slightly so the first block is already a little open right
+      // at the handoff, closing the residual gap — desktop keeps exactly 1.0.
+      const pre = vh * (window.innerWidth <= 560 ? 1.06 : 1.0);
       const total = track.offsetHeight - vh;
       const totalP = total + pre;
       const scrolled = Math.min(Math.max(pre - r.top, 0), Math.max(totalP, 1));
