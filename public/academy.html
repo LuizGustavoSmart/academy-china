@@ -110,6 +110,18 @@
   .disclaimer{font-family:'Barlow',sans-serif;font-size:12px;line-height:1.55;font-style:italic}
   .disclaimer--light{color:#8a8578}
   .disclaimer--dark{color:rgba(255,255,255,.5)}
+  /* ===== curadoria cena 2 · "As mentes por trás da imersão" (3 pessoas, fluxo normal) ===== */
+  .cur2-section{max-width:1220px;margin:0 auto;padding:clamp(48px,7vh,90px) clamp(18px,4vw,48px) clamp(64px,9vh,110px)}
+  .cur-kicker2{display:flex;align-items:center;gap:11px;margin:0 0 34px;font-family:'Barlow',sans-serif;font-size:12.5px;letter-spacing:.34em;text-transform:uppercase;color:#E30613;font-weight:600}
+  .cur-kicker2::before{content:"";width:26px;height:2px;background:#E30613;flex:none}
+  .cur-people-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(28px,3.5vw,48px)}
+  .cur-person-photo{height:230px;border-radius:5px;overflow:hidden;background:#e9e5de;margin-bottom:16px}
+  .cur-person-photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .cur-person-name{margin:0 0 4px;font-family:'Oswald',sans-serif;font-weight:600;font-size:18px;text-transform:uppercase;color:#17171a}
+  .cur-person-title{margin:0 0 14px;font-size:12px;letter-spacing:.02em;color:#E30613;font-weight:600;text-transform:uppercase;font-family:'Barlow Semi Condensed',sans-serif}
+  .cur-person-bio p{margin:0 0 10px;font-size:14px;line-height:1.55;color:#3a382f}
+  .cur-person-bio p:last-child{margin-bottom:0}
+  @media (max-width:820px){ .cur-people-grid{grid-template-columns:1fr;gap:40px} }
   @media (max-width:820px){ .pkg-grid{grid-template-columns:1fr} }
   /* ===== hotéis (parte 1 da seção hoteis-experiencias) ===== */
   .hoteis-intro{max-width:1220px;margin:0 auto;padding:clamp(84px,13vh,168px) clamp(18px,4vw,48px) clamp(48px,6vh,80px)}
@@ -178,14 +190,6 @@
     #hero-form-card input,#hero-form-card textarea{padding:7px 9px !important;font-size:12px !important}
     #hero-form-card textarea{min-height:44px}
 
-    /* --- proposta de valor: 6 blocos em 2 colunas --- */
-    #grid-stage [data-g3]{grid-template-columns:repeat(2,1fr) !important}
-    #grid-stage .gblock{padding:16px 12px !important}
-    #grid-stage .gblock h3{font-size:16px !important;margin:8px 0 6px !important}
-    #grid-stage .gblock p{font-size:12px !important;line-height:1.42 !important}
-    #grid-stage .gblock > span{font-size:12px !important}
-    #grid-stage .gblock:last-child p{font-size:14px !important}
-
     /* --- calendário: 3 marcos na mesma linha --- */
     #cal-stage{padding-left:16px !important;padding-right:16px !important}
     #cal-stage [data-g3]{grid-template-columns:repeat(3,1fr) !important;gap:10px !important}
@@ -203,19 +207,14 @@
     .cal-logo-word{font-size:12px !important}
     .cal-logo-sub{font-size:10.5px !important;margin-top:5px !important;letter-spacing:.02em !important}
 
-    /* --- curadoria cena 2 ("A mente por trás da imersão"): tudo cabe em 100vh --- */
-    #cur2-stage > div{padding-top:84px !important}
-    #cur2-stage [data-split]{gap:18px !important}
-    #cur-photo > div:nth-child(1){height:150px !important}
-    #cur-photo > div:nth-child(1) img{object-position:center 18% !important}
-    #cur-photo > div:nth-child(2){padding:14px !important}
-    #cur-photo h3{font-size:17px !important;margin-bottom:2px !important}
-    #cur-photo p{font-size:11px !important}
-    #cur-kicker{font-size:11px !important;margin-bottom:8px !important}
-    #cur-bio1,#cur-bio2{font-size:12.5px !important;line-height:1.45 !important;margin-bottom:10px !important}
-    #cur-g2{grid-template-columns:1fr !important}
-    #cur-g2 > div{padding:10px !important;font-size:10.5px !important;line-height:1.4 !important}
-    #cur-cta{margin-top:12px !important}
+    /* --- curadoria cena 2 ("As mentes por trás da imersão"): 3 pessoas empilhadas --- */
+    .cur-kicker2{font-size:11px !important;margin-bottom:22px !important}
+    .cur-people-grid{gap:32px !important}
+    .cur-person-photo{height:220px !important;margin-bottom:12px !important}
+    .cur-person-name{font-size:16px !important}
+    .cur-person-title{font-size:11px !important;margin-bottom:10px !important}
+    .cur-person-bio p{font-size:12.5px !important;line-height:1.5 !important;margin-bottom:8px !important}
+    #cur-cta{margin-top:28px !important}
 
     /* --- pacote: incluso e não incluso empilhados (como no desktop) --- */
     .pkg-col-head{font-size:15px !important;gap:8px !important}
@@ -225,9 +224,8 @@
     .pkg-item span{font-size:10.5px !important}
     .pkg-mark{font-size:12px !important}
 
-    /* --- proposta: texto → blocos com bem menos scroll --- */
-    #prop-track{height:120vh !important}
-    #grid-track{height:220vh !important}
+    /* --- proposta: seção termina logo após o texto (blocos removidos) --- */
+    #prop-track{height:100vh !important}
 
     /* --- calendário: seção começa mais cedo, título quebra linha, sem os textos pequenos --- */
     #cal-track{height:118vh !important}
@@ -366,7 +364,7 @@
 
   <!-- ============ PROPOSTA DE VALOR ============ -->
   <section id="proposta" style="scroll-margin-top:88px;background:#F4F1EC;color:#17171a;position:relative;">
-    <div id="prop-track" style="position:relative;height:190vh;">
+    <div id="prop-track" style="position:relative;height:140vh;">
       <div id="prop-stage" style="position:sticky;top:0;height:100vh;display:flex;align-items:flex-start;overflow:hidden;">
         <div style="max-width:1220px;margin:0 auto;width:100%;padding:clamp(96px,16vh,190px) clamp(18px,4vw,48px) 0;">
           <div id="prop-label" style="display:flex;align-items:center;gap:11px;margin-bottom:30px;">
@@ -381,60 +379,22 @@
       </div>
     </div>
 
-    <div id="grid-track" style="position:relative;height:300vh;">
-      <div id="grid-stage" style="position:sticky;top:0;height:100vh;display:flex;align-items:center;overflow:hidden;">
-        <div style="max-width:1220px;margin:0 auto;width:100%;padding:0 clamp(18px,4vw,48px);">
-      <div data-g3="" style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(0,0,0,.1);border:1px solid rgba(0,0,0,.1);">
-        <div class="gblock" style="background:#F4F1EC;padding:38px 30px;">
-          <span style="font-family:'Oswald',sans-serif;font-weight:700;font-size:15px;color:#E30613;letter-spacing:.05em;">01</span>
-          <h3 style="margin:12px 0 10px;font-family:'Oswald',sans-serif;font-weight:600;font-size:23px;text-transform:uppercase;letter-spacing:.01em;">Seleção intencional</h3>
-          <p style="margin:0;font-size:15.5px;line-height:1.58;color:#6e6a63;">Grupo formado por critério executivo — não por volume.</p>
-        </div>
-        <div class="gblock" style="background:#F4F1EC;padding:38px 30px;">
-          <span style="font-family:'Oswald',sans-serif;font-weight:700;font-size:15px;color:#E30613;letter-spacing:.05em;">02</span>
-          <h3 style="margin:12px 0 10px;font-family:'Oswald',sans-serif;font-weight:600;font-size:23px;text-transform:uppercase;letter-spacing:.01em;">Agenda relevante</h3>
-          <p style="margin:0;font-size:15.5px;line-height:1.58;color:#6e6a63;">Encontros desenhados a partir do perfil de quem está na sala.</p>
-        </div>
-        <div class="gblock" style="background:#F4F1EC;padding:38px 30px;">
-          <span style="font-family:'Oswald',sans-serif;font-weight:700;font-size:15px;color:#E30613;letter-spacing:.05em;">03</span>
-          <h3 style="margin:12px 0 10px;font-family:'Oswald',sans-serif;font-weight:600;font-size:23px;text-transform:uppercase;letter-spacing:.01em;">Acesso estratégico</h3>
-          <p style="margin:0;font-size:15.5px;line-height:1.58;color:#6e6a63;">Empresas, institutos e interlocutores que fazem sentido de negócio.</p>
-        </div>
-        <div class="gblock" style="background:#F4F1EC;padding:38px 30px;">
-          <span style="font-family:'Oswald',sans-serif;font-weight:700;font-size:15px;color:#E30613;letter-spacing:.05em;">04</span>
-          <h3 style="margin:12px 0 10px;font-family:'Oswald',sans-serif;font-weight:600;font-size:23px;text-transform:uppercase;letter-spacing:.01em;">Leitura executiva</h3>
-          <p style="margin:0;font-size:15.5px;line-height:1.58;color:#6e6a63;">Contexto e critério para traduzir o que se vê em decisão.</p>
-        </div>
-        <div class="gblock" style="background:#F4F1EC;padding:38px 30px;">
-          <span style="font-family:'Oswald',sans-serif;font-weight:700;font-size:15px;color:#E30613;letter-spacing:.05em;">05</span>
-          <h3 style="margin:12px 0 10px;font-family:'Oswald',sans-serif;font-weight:600;font-size:23px;text-transform:uppercase;letter-spacing:.01em;">Geração de negócios</h3>
-          <p style="margin:0;font-size:15.5px;line-height:1.58;color:#6e6a63;">A missão como ponto de partida para relações e oportunidades.</p>
-        </div>
-        <div class="gblock" style="background:#141414;color:#fff;padding:38px 30px;display:flex;flex-direction:column;justify-content:center;">
-          <p style="margin:0;font-family:'Oswald',sans-serif;font-weight:500;font-size:20px;line-height:1.25;text-transform:uppercase;">Cinco frentes,<br>uma única<br><span style="color:#E30613;">consequência de negócio.</span></p>
-        </div>
-      </div>
-        </div>
-      </div>
-    </div>
   </section>
 
   <!-- ============ MANIFESTO ============ -->
   <section id="manifesto" style="scroll-margin-top:88px;position:relative;background:#141414;color:#F4F1EC;">
-    <div id="mani-track" style="position:relative;height:280vh;">
-      <div id="mani-stage" style="position:sticky;top:0;height:100vh;display:flex;align-items:center;overflow:hidden;">
-        <div style="position:absolute;top:-6%;right:-6%;font-family:'Oswald',sans-serif;font-weight:700;font-size:min(46vw,640px);line-height:.8;color:rgba(227,6,19,.07);pointer-events:none;user-select:none;">2026</div>
-        <div style="position:relative;max-width:1080px;margin:0 auto;width:100%;padding:0 clamp(18px,4vw,48px);">
-          <div id="mani-label" style="display:flex;align-items:center;gap:11px;margin-bottom:38px;">
-            <span style="width:26px;height:2px;background:#E30613;"></span>
-            <span style="font-family:'Barlow',sans-serif;font-size:12.5px;letter-spacing:.34em;text-transform:uppercase;color:rgba(255,255,255,.6);font-weight:500;">Por que agora · Manifesto</span>
-          </div>
-          <p id="mani-p" style="margin:0;font-family:'Oswald',sans-serif;font-weight:300;font-size:clamp(28px,4.6vw,58px);line-height:1.14;letter-spacing:-.005em;">
-            <span class="mw" style="display:inline-block;will-change:opacity,transform;">A</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">China</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">está</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">à</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">frente</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">porque</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">já</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">opera</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">com</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">IA</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">como</span> <span class="mw" style="display:inline-block;color:#E30613;font-weight:500;will-change:opacity,transform;">braço</span> <span class="mw" style="display:inline-block;color:#E30613;font-weight:500;will-change:opacity,transform;">cognitivo</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">dos</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">seus</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">sistemas.</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">A</span> <span class="mw" style="display:inline-block;font-weight:600;will-change:opacity,transform;">Academy</span> <span class="mw" style="display:inline-block;font-weight:600;will-change:opacity,transform;">China</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">existe</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">para</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">mostrar</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">isso</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">ao</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">vivo</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">—</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">com</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">contexto,</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">critério</span> <span class="mw" style="display:inline-block;will-change:opacity,transform;">e</span> <span class="mw" style="display:inline-block;color:#E30613;font-weight:500;will-change:opacity,transform;">consequência</span> <span class="mw" style="display:inline-block;color:#E30613;font-weight:500;will-change:opacity,transform;">de</span> <span class="mw" style="display:inline-block;color:#E30613;font-weight:500;will-change:opacity,transform;">negócio.</span>
-          </p>
-          <div id="mani-cta" class="cta-inline-wrap" style="opacity:0;will-change:opacity,transform;">
-            <a href="#topo" class="cta-inline">Quero participar →</a>
-          </div>
+    <div style="position:relative;padding:clamp(64px,11vh,130px) clamp(18px,4vw,48px);">
+      <div style="position:absolute;top:-6%;right:-6%;font-family:'Oswald',sans-serif;font-weight:700;font-size:min(46vw,640px);line-height:.8;color:rgba(227,6,19,.07);pointer-events:none;user-select:none;">2026</div>
+      <div style="position:relative;max-width:1080px;margin:0 auto;width:100%;">
+        <div data-reveal="" style="display:flex;align-items:center;gap:11px;margin-bottom:38px;">
+          <span style="width:26px;height:2px;background:#E30613;"></span>
+          <span style="font-family:'Barlow',sans-serif;font-size:12.5px;letter-spacing:.34em;text-transform:uppercase;color:rgba(255,255,255,.6);font-weight:500;">Por que agora · Manifesto</span>
+        </div>
+        <p data-reveal="" data-reveal-delay="1" style="margin:0;font-family:'Oswald',sans-serif;font-weight:300;font-size:clamp(28px,4.6vw,58px);line-height:1.14;letter-spacing:-.005em;">
+          A China está à frente porque já opera com IA como <span style="color:#E30613;font-weight:500;">braço cognitivo</span> dos seus sistemas. A <span style="font-weight:600;">Academy China</span> existe para mostrar isso ao vivo — com contexto, critério e <span style="color:#E30613;font-weight:500;">consequência de negócio.</span>
+        </p>
+        <div class="cta-inline-wrap" data-reveal="" data-reveal-delay="2">
+          <a href="#topo" class="cta-inline">Quero participar →</a>
         </div>
       </div>
     </div>
@@ -925,34 +885,43 @@
       </div>
     </div>
 
-    <!-- SCENE 2 · José Ricardo: "A mente por trás da imersão" hero → kicker, then photo + bio reveal -->
-    <div id="cur2-track" style="position:relative;height:340vh;">
-      <div id="cur2-stage" style="position:sticky;top:0;height:100vh;overflow:hidden;">
-        <div style="max-width:1220px;margin:0 auto;height:100%;box-sizing:border-box;padding:clamp(96px,13vh,168px) clamp(18px,4vw,48px) 0;position:relative;">
-          <div data-split="" style="display:grid;grid-template-columns:340px 1fr;gap:40px;align-items:start;">
-            <div id="cur-photo" style="border:1px solid rgba(0,0,0,.1);border-radius:5px;overflow:hidden;background:#fff;will-change:opacity,transform;">
-              <div style="height:340px;background:#e9e5de;">
-                <img src="/assets-academy/img-07.jpg" alt="José Ricardo dos Santos Luz Jr." style="width:100%;height:100%;object-fit:cover;display:block;">
-              </div>
-              <div style="padding:22px;">
-                <h3 style="margin:0 0 4px;font-family:'Oswald',sans-serif;font-weight:600;font-size:22px;text-transform:uppercase;">José Ricardo dos Santos Luz Jr.</h3>
-                <p style="margin:0;font-size:13.5px;letter-spacing:.02em;color:#E30613;font-weight:600;text-transform:uppercase;font-family:'Barlow Semi Condensed',sans-serif;">Co-Chairman &amp; CEO · LIDE China</p>
-              </div>
-            </div>
-            <div>
-              <div id="cur-kicker" style="display:inline-block;font-family:'Barlow',sans-serif;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:#6e6a63;margin-bottom:14px;will-change:opacity,transform;">A mente por trás da imersão</div>
-              <p id="cur-bio1" style="margin:0 0 18px;font-size:17px;line-height:1.62;color:#3a382f;will-change:opacity,transform;">Referência em relações Brasil–China, com mais de 20 anos de experiência combinando expertise jurídica, relações governamentais e liderança de projetos internacionais de investimento e expansão empresarial.</p>
-              <p id="cur-bio2" style="margin:0 0 26px;font-size:17px;line-height:1.62;color:#3a382f;will-change:opacity,transform;">Advogado e empresário brasileiro que viveu cinco anos na China e obteve seu MBA pela Universidade de Pequim. Conselheiro estratégico do Laboratório dos BRICS (BPIC).</p>
-              <div id="cur-g2" data-g2="" style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(0,0,0,.1);border:1px solid rgba(0,0,0,.1);will-change:opacity,transform;">
-                <div style="background:#F4F1EC;padding:20px;font-size:14.5px;line-height:1.5;color:#3a382f;">Pesquisador do Grupo de Estudos BRICS da Faculdade de Direito da USP (GEBRICS/USP).</div>
-                <div style="background:#F4F1EC;padding:20px;font-size:14.5px;line-height:1.5;color:#3a382f;">Membro das Comissões de Comércio Exterior e de Direito Internacional da OAB/SP.</div>
-              </div>
-              <div id="cur-cta" class="cta-inline-wrap" style="will-change:opacity,transform;">
-                <a href="#topo" class="cta-inline">Tenho interesse →</a>
-              </div>
-            </div>
+    <!-- SCENE 2 · "As mentes por trás da imersão" — 3 pessoas, fluxo normal + reveal simples -->
+    <div class="cur2-section">
+      <div class="cur-kicker2" data-reveal="">As mentes por trás da imersão</div>
+      <div class="cur-people-grid">
+        <div class="cur-person" data-reveal="">
+          <div class="cur-person-photo"><img src="/assets-academy/img-07.jpg" alt="José Ricardo dos Santos Luz Jr." style="object-position:center 35%;"></div>
+          <h3 class="cur-person-name">José Ricardo dos Santos Luz Jr.</h3>
+          <p class="cur-person-title">Co-Chairman &amp; CEO · LIDE China</p>
+          <div class="cur-person-bio">
+            <p>Referência em relações Brasil–China, com mais de 20 anos de experiência em direito, relações governamentais e projetos internacionais de investimento e expansão empresarial.</p>
+            <p>Advogado e empresário, viveu cinco anos na China e é MBA pela Universidade de Pequim.</p>
+            <p>Conselheiro estratégico do Laboratório dos BRICS (BPIC), pesquisador do GEBRICS/USP e membro das Comissões de Comércio Exterior e de Direito Internacional da OAB/SP.</p>
           </div>
         </div>
+        <div class="cur-person" data-reveal="" data-reveal-delay="1">
+          <div class="cur-person-photo"><img src="/assets-academy/curadoria-roque-almeida.jpg" alt="Roque Almeida" style="object-position:center 54%;"></div>
+          <h3 class="cur-person-name">Roque Almeida</h3>
+          <p class="cur-person-title">CEO &amp; Founder · Grupo Matter&amp;Co.</p>
+          <div class="cur-person-bio">
+            <p>Referência em estratégia empresarial e inovação, com quase 30 anos de experiência em gestão, transformação organizacional e desenvolvimento de negócios.</p>
+            <p>CEO e fundador do Grupo Matter&amp;Co., ecossistema de inteligência de negócios que integra consultoria, tecnologia e educação.</p>
+            <p>Graduação pela UFMG, com especializações pela Fundação Dom Cabral e IETEC, além de certificação pela University of British Columbia (UBC). Liderou mais de 800 projetos de estratégia e crescimento empresarial.</p>
+          </div>
+        </div>
+        <div class="cur-person" data-reveal="" data-reveal-delay="2">
+          <div class="cur-person-photo"><img src="/assets-academy/curadoria-rodrigo-moreira.jpg" alt="Rodrigo Moreira"></div>
+          <h3 class="cur-person-name">Rodrigo Moreira</h3>
+          <p class="cur-person-title">Co-Founder &amp; Managing Partner · Hiker Ventures</p>
+          <div class="cur-person-bio">
+            <p>Especialista em inovação corporativa e venture building, conectando empresas aos principais ecossistemas globais de tecnologia e startups.</p>
+            <p>Co-Founder &amp; Managing Partner da Hiker Ventures, liderando iniciativas de inovação aberta, corporate venture capital e desenvolvimento de novos negócios.</p>
+            <p>Atua na liderança de missões internacionais e programas de inovação, aproximando executivos dos principais polos mundiais de empreendedorismo e tecnologia.</p>
+          </div>
+        </div>
+      </div>
+      <div id="cur-cta" class="cta-inline-wrap" data-reveal="" data-reveal-delay="3">
+        <a href="#topo" class="cta-inline">Quero participar →</a>
       </div>
     </div>
   </section>
@@ -1879,34 +1848,34 @@
   }
 
   self._buildCuradoria = function(enabled) {
+    // SCENE 1 ("Curadoria" / "Não existe uma agenda padrão.") stays a pinned
+    // hero-title-morph scene. SCENE 2 ("As mentes por trás da imersão") is now
+    // normal flow (3 people, revealed via the generic [data-reveal] system)
+    // since its content no longer fits a single pinned 100vh scene.
     const t1 = document.getElementById('cur1-track');
     const s1 = document.getElementById('cur1-stage');
-    const t2 = document.getElementById('cur2-track');
-    const s2 = document.getElementById('cur2-stage');
-    if (!t1 || !s1 || !t2 || !s2) return;
+    if (!t1 || !s1) return;
 
     const $ = (id) => document.getElementById(id);
     const curadoria = $('cur-curadoria'), dash = $('cur-dash');
     const frase1 = $('cur-frase1'), frase2 = $('cur-frase2'), desc = $('cur-desc');
-    const kicker = $('cur-kicker'), photo = $('cur-photo'), bio1 = $('cur-bio1'), bio2 = $('cur-bio2'), curCta = $('cur-cta'), g2 = $('cur-g2');
 
     const clamp = (v) => Math.max(0, Math.min(1, v));
     const easeOut = (x) => 1 - Math.pow(1 - x, 3);
     const easeIO = (x) => x < 0.5 ? 4*x*x*x : 1 - Math.pow(-2*x+2,3)/2;
 
     if (!enabled) {
-      [t1, t2].forEach((t) => { t.style.height = 'auto'; });
-      [s1, s2].forEach((s) => { s.style.position = 'static'; s.style.height = 'auto'; s.style.overflow = 'visible'; s.firstElementChild.style.padding = 'clamp(76px,10vw,140px) clamp(18px,4vw,48px)'; });
-      [curadoria, dash, frase1, frase2, desc, kicker, photo, bio1, bio2, curCta, g2].forEach((el) => { if (el) { el.style.opacity = 1; el.style.transform = 'none'; } });
+      t1.style.height = 'auto';
+      s1.style.position = 'static'; s1.style.height = 'auto'; s1.style.overflow = 'visible';
+      s1.firstElementChild.style.padding = 'clamp(76px,10vw,140px) clamp(18px,4vw,48px)';
+      [curadoria, dash, frase1, frase2, desc].forEach((el) => { if (el) { el.style.opacity = 1; el.style.transform = 'none'; } });
       return;
     }
 
     // FLIP measurement: hero (centered + scaled) → natural, per element
-    // spec: { el, stage, desiredFont, cap }  → stores geometry in a Map
     const flips = [
       { el: curadoria, stage: s1, desiredFont: 96, factor: 0.085 },
       { el: frase1,    stage: s1, desiredFont: 78, factor: 0.062 },
-      { el: kicker,    stage: s2, desiredFont: 72, factor: 0.062 },
     ];
     const geo = new Map();
     const measure = () => {
@@ -1958,31 +1927,16 @@
       reveal(desc, (p - 0.62) / 0.34);
     };
 
-    const applyScene2 = (p) => {
-      // "A mente por trás da imersão": fade in centered, then morph to kicker slot
-      kicker.style.opacity = clamp(p / 0.05);
-      flip(kicker, (p - 0.08) / 0.20);
-      // photo + bio reveal gradually
-      reveal(photo, (p - 0.30) / 0.20);
-      reveal(bio1, (p - 0.36) / 0.18);
-      reveal(bio2, (p - 0.44) / 0.18);
-      reveal(g2, (p - 0.52) / 0.18);
-      reveal(curCta, (p - 0.62) / 0.16);
-    };
-
-    const progress = (track, preFrac) => {
-      const r = track.getBoundingClientRect();
+    const compute = () => {
+      const r = t1.getBoundingClientRect();
       const vh = window.innerHeight;
-      const pre = vh * (preFrac == null ? 0.5 : preFrac);
-      const total = track.offsetHeight - vh;
+      const pre = vh * 0.5;
+      const total = t1.offsetHeight - vh;
       const totalP = total + pre;
       const scrolled = Math.min(Math.max(pre - r.top, 0), Math.max(totalP, 1));
-      return totalP > 0 ? scrolled / totalP : (r.top <= -total ? 1 : 0);
+      const p = totalP > 0 ? scrolled / totalP : (r.top <= -total ? 1 : 0);
+      applyScene1(p);
     };
-    // scene2 can only start becoming visible once scene1's own pin releases, so it
-    // gets a full-screen head-start — progress is already ticking right as scene1
-    // hands off, instead of needing extra scroll on top of the release.
-    const compute = () => { applyScene1(progress(t1)); applyScene2(progress(t2, 1.0)); };
 
     let ticking = false;
     const onScroll = () => {
