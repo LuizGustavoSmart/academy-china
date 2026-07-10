@@ -195,6 +195,7 @@ function LeadCard({ lead, onDelete, onEdit }: { lead: Lead; onDelete: () => void
         {onEdit ? <button className="p-link" style={{ fontSize: 12 }} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onEdit(); }}>{lead.nome}</button> : lead.nome}
       </div>
       <div className="lead-meta">{[lead.cargo, lead.cidade].filter(Boolean).join(" · ") || "—"}</div>
+      {(lead.email || lead.telefone) && <div className="lead-meta" style={{ opacity: 0.85 }}>{lead.email || lead.telefone}</div>}
       <span className={`lead-resp ${respClass(lead.responsavel)}`}><i className="ti ti-user" style={{ fontSize: 10 }} /> {respLabel(lead.responsavel)}</span>
     </div>
   );
