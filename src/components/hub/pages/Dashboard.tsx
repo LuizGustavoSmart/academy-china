@@ -64,20 +64,32 @@ export function DashboardPage() {
         <div className="panel">
           <div className="panel-header"><i className="ti ti-users" /> Leads por passo</div>
           <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {[1, 2, 3, 4, 5, 6, 7].map((p) => {
-              const count = leads.filter((l) => l.passo === p).length;
-              const max = Math.max(1, ...[1, 2, 3, 4, 5, 6, 7].map((s) => leads.filter((l) => l.passo === s).length));
-              const colors = ["var(--text3)", "var(--purple)", "var(--blue)", "#378add", "var(--amber)", "#d85a30", "var(--teal)"];
-              return (
-                <div key={p} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 12, color: "var(--text2)", width: 130, flexShrink: 0 }}>P{p}</span>
-                  <div style={{ flex: 1, height: 8, background: "var(--surface2)", borderRadius: 4, overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${(count / max) * 100}%`, background: colors[p - 1], borderRadius: 4 }} />
+            {(() => {
+              const stages = [
+                { p: 0, label: "P0 — Cadastro",   color: "#52b788" },
+                { p: 1, label: "P1 — Abordagem",   color: "var(--text3)" },
+                { p: 2, label: "P2 — Qualificação", color: "var(--purple)" },
+                { p: 3, label: "P3 — Mapa enviado", color: "var(--blue)" },
+                { p: 4, label: "P4 — Voos sugeridos", color: "#378add" },
+                { p: 5, label: "P5 — Go / No-go",  color: "var(--amber)" },
+                { p: 6, label: "P6 — Contrato",    color: "#d85a30" },
+                { p: 7, label: "P7 — Confirmado",  color: "var(--teal)" },
+                { p: 8, label: "Declinado",         color: "#c0392b" },
+              ];
+              const max = Math.max(1, ...stages.map(({ p }) => leads.filter((l) => l.passo === p).length));
+              return stages.map(({ p, label, color }) => {
+                const count = leads.filter((l) => l.passo === p).length;
+                return (
+                  <div key={p} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 12, color: "var(--text2)", width: 130, flexShrink: 0 }}>{label}</span>
+                    <div style={{ flex: 1, height: 8, background: "var(--surface2)", borderRadius: 4, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${(count / max) * 100}%`, background: color, borderRadius: 4 }} />
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 500, width: 16, textAlign: "right" }}>{count}</span>
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 500, width: 16, textAlign: "right" }}>{count}</span>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </div>
         <div className="panel">
