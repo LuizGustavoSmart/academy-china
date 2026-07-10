@@ -71,13 +71,16 @@ function LeadsTab({ onViewParticipant }: { onViewParticipant?: (id: string) => v
       </div>
       <div className="table-wrap">
         <table>
-          <thead><tr><th>Nome</th><th>Empresa</th><th>Cidade</th><th>Passo</th><th>Responsável</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Nome</th><th>Empresa</th><th>Email</th><th>Telefone</th><th>Cidade</th><th>Passo</th><th>Responsável</th><th>Status</th><th></th></tr></thead>
           <tbody>
-            {leads.length === 0 && orphanParticipants.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--text3)", padding: 16 }}>Nenhum lead cadastrado.</td></tr>}
+            {leads.length === 0 && orphanParticipants.length === 0 && <tr><td colSpan={9} style={{ textAlign: "center", color: "var(--text3)", padding: 16 }}>Nenhum lead cadastrado.</td></tr>}
             {leads.map((l) => (
               <tr key={l.id}>
                 <td><button className="p-link" onClick={() => setEditing(l)}>{l.nome}</button></td>
-                <td>{l.empresa ?? "—"}</td><td>{l.cidade ?? "—"}</td>
+                <td>{l.empresa ?? "—"}</td>
+                <td>{l.email ?? "—"}</td>
+                <td>{l.telefone ?? "—"}</td>
+                <td>{l.cidade ?? "—"}</td>
                 <td>{PASSO_LABELS[l.passo]}</td>
                 <td><span className={`badge ${respClass(l.responsavel).replace("resp-","badge-").replace("badge-ambos","badge-ok").replace("badge-roque","badge-neutral").replace("badge-caetano","badge-blue")}`}>{respLabel(l.responsavel)}</span></td>
                 <td><span className="badge badge-warn">{l.status ?? "—"}</span></td>
@@ -87,7 +90,10 @@ function LeadsTab({ onViewParticipant }: { onViewParticipant?: (id: string) => v
             {orphanParticipants.map((p) => (
               <tr key={`part-${p.id}`} style={{ opacity: 0.85 }}>
                 <td><button className="p-link" onClick={() => onViewParticipant ? onViewParticipant(p.id) : setEditingPart(p)}>{p.nome}</button></td>
-                <td>{p.empresa ?? "—"}</td><td>{p.cidade ?? "—"}</td>
+                <td>{p.empresa ?? "—"}</td>
+                <td>{p.email ?? "—"}</td>
+                <td>{p.telefone ?? "—"}</td>
+                <td>{p.cidade ?? "—"}</td>
                 <td>{PASSO_LABELS[7]}</td>
                 <td><span className="badge badge-blue">Caetano</span></td>
                 <td><span className="badge badge-ok">Confirmado</span></td>
@@ -189,6 +195,7 @@ function LeadCard({ lead, onDelete, onEdit }: { lead: Lead; onDelete: () => void
         {onEdit ? <button className="p-link" style={{ fontSize: 12 }} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onEdit(); }}>{lead.nome}</button> : lead.nome}
       </div>
       <div className="lead-meta">{[lead.cargo, lead.cidade].filter(Boolean).join(" · ") || "—"}</div>
+      {(lead.email || lead.telefone) && <div className="lead-meta" style={{ opacity: 0.85 }}>{lead.email || lead.telefone}</div>}
       <span className={`lead-resp ${respClass(lead.responsavel)}`}><i className="ti ti-user" style={{ fontSize: 10 }} /> {respLabel(lead.responsavel)}</span>
     </div>
   );
@@ -230,7 +237,7 @@ function OrphanEditModal({ participant, onClose }: { participant: Participant; o
 function LeadModal({ open, onClose, initialPasso, lead }: { open: boolean; onClose: () => void; initialPasso?: number; lead?: Lead }) {
   const create = useCreateLead();
   const update = useUpdateLead();
-  const [form, setForm] = useState({ nome: lead?.nome ?? "", cargo: lead?.cargo ?? "", empresa: lead?.empresa ?? "", cidade: lead?.cidade ?? "", passo: lead?.passo ?? initialPasso ?? 1, responsavel: lead?.responsavel ?? "caetano", status: lead?.status ?? "abordado", observacoes: lead?.observacoes ?? "" });
+  const [form, setForm] = useState({ nome: lead?.nome ?? "", cargo: lead?.cargo ?? "", empresa: lead?.empresa ?? "", cidade: lead?.cidade ?? "", email: lead?.email ?? "", telefone: lead?.telefone ?? "", passo: lead?.passo ?? initialPasso ?? 1, responsavel: lead?.responsavel ?? "caetano", status: lead?.status ?? "abordado", observacoes: lead?.observacoes ?? "" });
   const submit = () => {
     if (!form.nome.trim()) return;
     if (lead) { update.mutate({ id: lead.id, patch: form }, { onSuccess: onClose }); } else { create.mutate(form, { onSuccess: onClose }); }
@@ -241,6 +248,8 @@ function LeadModal({ open, onClose, initialPasso, lead }: { open: boolean; onClo
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <div className="form-group"><label className="form-label">Cargo</label><input className="form-input" value={form.cargo ?? ""} onChange={(e) => setForm({ ...form, cargo: e.target.value })} /></div>
         <div className="form-group"><label className="form-label">Empresa</label><input className="form-input" value={form.empresa ?? ""} onChange={(e) => setForm({ ...form, empresa: e.target.value })} /></div>
+        <div className="form-group"><label className="form-label">Email</label><input className="form-input" type="email" value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+        <div className="form-group"><label className="form-label">Telefone</label><input className="form-input" value={form.telefone ?? ""} onChange={(e) => setForm({ ...form, telefone: e.target.value })} /></div>
         <div className="form-group"><label className="form-label">Cidade</label><input className="form-input" value={form.cidade ?? ""} onChange={(e) => setForm({ ...form, cidade: e.target.value })} /></div>
         <div className="form-group"><label className="form-label">Passo</label><select className="form-select" value={form.passo} onChange={(e) => setForm({ ...form, passo: Number(e.target.value) })}>{STAGES.map((s) => <option key={s} value={s}>{PASSO_LABELS[s]}</option>)}</select></div>
         <div className="form-group"><label className="form-label">Responsável</label><select className="form-select" value={form.responsavel} onChange={(e) => setForm({ ...form, responsavel: e.target.value })}><option value="roque">Roque</option><option value="caetano">Caetano</option><option value="ambos">Caetano + Roque</option></select></div>

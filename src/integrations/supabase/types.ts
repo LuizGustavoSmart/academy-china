@@ -127,6 +127,7 @@ export type Database = {
           cargo: string | null
           cidade: string | null
           created_at: string
+          email: string | null
           empresa: string | null
           id: string
           nome: string
@@ -135,12 +136,14 @@ export type Database = {
           passo: number
           responsavel: string
           status: string | null
+          telefone: string | null
           updated_at: string
         }
         Insert: {
           cargo?: string | null
           cidade?: string | null
           created_at?: string
+          email?: string | null
           empresa?: string | null
           id?: string
           nome: string
@@ -149,12 +152,14 @@ export type Database = {
           passo?: number
           responsavel: string
           status?: string | null
+          telefone?: string | null
           updated_at?: string
         }
         Update: {
           cargo?: string | null
           cidade?: string | null
           created_at?: string
+          email?: string | null
           empresa?: string | null
           id?: string
           nome?: string
@@ -163,6 +168,7 @@ export type Database = {
           passo?: number
           responsavel?: string
           status?: string | null
+          telefone?: string | null
           updated_at?: string
         }
         Relationships: []

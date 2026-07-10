@@ -45,6 +45,8 @@ export type Lead = {
   observacoes: string | null;
   ordem: number;
   created_at: string;
+  email: string | null;
+  telefone: string | null;
 };
 
 export type Touchpoint = {
