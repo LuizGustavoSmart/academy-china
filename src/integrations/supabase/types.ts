@@ -130,14 +130,18 @@ export type Database = {
           email: string | null
           empresa: string | null
           id: string
+          ip: string | null
+          mensagem: string | null
           nome: string
           observacoes: string | null
           ordem: number
+          origem: string | null
           passo: number
           responsavel: string
           status: string | null
           telefone: string | null
           updated_at: string
+          user_agent: string | null
         }
         Insert: {
           cargo?: string | null
@@ -146,14 +150,18 @@ export type Database = {
           email?: string | null
           empresa?: string | null
           id?: string
+          ip?: string | null
+          mensagem?: string | null
           nome: string
           observacoes?: string | null
           ordem?: number
+          origem?: string | null
           passo?: number
           responsavel: string
           status?: string | null
           telefone?: string | null
           updated_at?: string
+          user_agent?: string | null
         }
         Update: {
           cargo?: string | null
@@ -162,14 +170,18 @@ export type Database = {
           email?: string | null
           empresa?: string | null
           id?: string
+          ip?: string | null
+          mensagem?: string | null
           nome?: string
           observacoes?: string | null
           ordem?: number
+          origem?: string | null
           passo?: number
           responsavel?: string
           status?: string | null
           telefone?: string | null
           updated_at?: string
+          user_agent?: string | null
         }
         Relationships: []
       }
