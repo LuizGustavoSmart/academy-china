@@ -89,22 +89,40 @@ export const Route = createFileRoute("/api/public/leads")({
           "";
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { error } = await supabaseAdmin.from("leads").insert({
-          nome: data.nome,
-          email: data.email,
-          telefone: data.telefone,
-          empresa: data.empresa,
-          mensagem: data.mensagem,
-          origem: data.origem,
-          user_agent: ua,
-          ip,
-        });
-        if (error) {
-          console.error("[leads] insert failed", error);
-          return new Response(JSON.stringify({ error: "db_error" }), {
-            status: 500,
-            headers: { "content-type": "application/json" },
+
+        // Dedupe by email — skip insert if this email already exists in the CRM
+        let alreadyExists = false;
+        if (data.email) {
+          const { data: existing } = await supabaseAdmin
+            .from("leads_crm")
+            .select("id")
+            .ilike("email", data.email)
+            .maybeSingle();
+          alreadyExists = !!existing;
+        }
+
+        if (!alreadyExists) {
+          const { error } = await supabaseAdmin.from("leads_crm").insert({
+            nome: data.nome || "Sem nome",
+            email: data.email || null,
+            telefone: data.telefone || null,
+            empresa: data.empresa || null,
+            mensagem: data.mensagem || null,
+            origem: data.origem || "site",
+            user_agent: ua,
+            ip,
+            passo: 0,
+            responsavel: "caetano",
+            status: "cadastro",
+            ordem: 0,
           });
+          if (error) {
+            console.error("[leads] insert failed", error);
+            return new Response(JSON.stringify({ error: "db_error" }), {
+              status: 500,
+              headers: { "content-type": "application/json" },
+            });
+          }
         }
 
         // Fire-and-forget email (don't block or fail the request)
