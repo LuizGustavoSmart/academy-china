@@ -170,7 +170,7 @@ export function useLeads() {
   return useQuery<Lead[]>({
     queryKey: ["hub_leads"],
     queryFn: async () => {
-      const { data, error } = await sb.from("leads").select("*").order("passo").order("ordem");
+      const { data, error } = await sb.from("leads_crm").select("*").order("passo").order("ordem");
       if (error) throw error;
       return data ?? [];
     },
@@ -181,7 +181,7 @@ export function useCreateLead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (l: Partial<Lead>) => {
-      const { data, error } = await sb.from("leads").insert(l).select().single();
+      const { data, error } = await sb.from("leads_crm").insert(l).select().single();
       if (error) throw error;
       return data;
     },
@@ -193,7 +193,7 @@ export function useUpdateLead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<Lead> }) => {
-      const { error } = await sb.from("leads").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
+      const { error } = await sb.from("leads_crm").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_leads"] }),
@@ -204,7 +204,7 @@ export function useDeleteLead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await sb.from("leads").delete().eq("id", id);
+      const { error } = await sb.from("leads_crm").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_leads"] }),
