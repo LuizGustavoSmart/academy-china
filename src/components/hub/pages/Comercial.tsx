@@ -237,7 +237,7 @@ function OrphanEditModal({ participant, onClose }: { participant: Participant; o
 function LeadModal({ open, onClose, initialPasso, lead }: { open: boolean; onClose: () => void; initialPasso?: number; lead?: Lead }) {
   const create = useCreateLead();
   const update = useUpdateLead();
-  const [form, setForm] = useState({ nome: lead?.nome ?? "", cargo: lead?.cargo ?? "", empresa: lead?.empresa ?? "", cidade: lead?.cidade ?? "", passo: lead?.passo ?? initialPasso ?? 1, responsavel: lead?.responsavel ?? "caetano", status: lead?.status ?? "abordado", observacoes: lead?.observacoes ?? "" });
+  const [form, setForm] = useState({ nome: lead?.nome ?? "", cargo: lead?.cargo ?? "", empresa: lead?.empresa ?? "", cidade: lead?.cidade ?? "", email: lead?.email ?? "", telefone: lead?.telefone ?? "", passo: lead?.passo ?? initialPasso ?? 1, responsavel: lead?.responsavel ?? "caetano", status: lead?.status ?? "abordado", observacoes: lead?.observacoes ?? "" });
   const submit = () => {
     if (!form.nome.trim()) return;
     if (lead) { update.mutate({ id: lead.id, patch: form }, { onSuccess: onClose }); } else { create.mutate(form, { onSuccess: onClose }); }
@@ -248,6 +248,8 @@ function LeadModal({ open, onClose, initialPasso, lead }: { open: boolean; onClo
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <div className="form-group"><label className="form-label">Cargo</label><input className="form-input" value={form.cargo ?? ""} onChange={(e) => setForm({ ...form, cargo: e.target.value })} /></div>
         <div className="form-group"><label className="form-label">Empresa</label><input className="form-input" value={form.empresa ?? ""} onChange={(e) => setForm({ ...form, empresa: e.target.value })} /></div>
+        <div className="form-group"><label className="form-label">Email</label><input className="form-input" type="email" value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+        <div className="form-group"><label className="form-label">Telefone</label><input className="form-input" value={form.telefone ?? ""} onChange={(e) => setForm({ ...form, telefone: e.target.value })} /></div>
         <div className="form-group"><label className="form-label">Cidade</label><input className="form-input" value={form.cidade ?? ""} onChange={(e) => setForm({ ...form, cidade: e.target.value })} /></div>
         <div className="form-group"><label className="form-label">Passo</label><select className="form-select" value={form.passo} onChange={(e) => setForm({ ...form, passo: Number(e.target.value) })}>{STAGES.map((s) => <option key={s} value={s}>{PASSO_LABELS[s]}</option>)}</select></div>
         <div className="form-group"><label className="form-label">Responsável</label><select className="form-select" value={form.responsavel} onChange={(e) => setForm({ ...form, responsavel: e.target.value })}><option value="roque">Roque</option><option value="caetano">Caetano</option><option value="ambos">Caetano + Roque</option></select></div>
