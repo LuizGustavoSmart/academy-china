@@ -47,6 +47,8 @@ export type Lead = {
   created_at: string;
   email: string | null;
   telefone: string | null;
+  mensagem: string | null;
+  origem: string | null;
 };
 
 export type Touchpoint = {
