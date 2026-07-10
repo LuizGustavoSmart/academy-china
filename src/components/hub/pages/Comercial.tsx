@@ -71,13 +71,16 @@ function LeadsTab({ onViewParticipant }: { onViewParticipant?: (id: string) => v
       </div>
       <div className="table-wrap">
         <table>
-          <thead><tr><th>Nome</th><th>Empresa</th><th>Cidade</th><th>Passo</th><th>Responsável</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Nome</th><th>Empresa</th><th>Email</th><th>Telefone</th><th>Cidade</th><th>Passo</th><th>Responsável</th><th>Status</th><th></th></tr></thead>
           <tbody>
-            {leads.length === 0 && orphanParticipants.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--text3)", padding: 16 }}>Nenhum lead cadastrado.</td></tr>}
+            {leads.length === 0 && orphanParticipants.length === 0 && <tr><td colSpan={9} style={{ textAlign: "center", color: "var(--text3)", padding: 16 }}>Nenhum lead cadastrado.</td></tr>}
             {leads.map((l) => (
               <tr key={l.id}>
                 <td><button className="p-link" onClick={() => setEditing(l)}>{l.nome}</button></td>
-                <td>{l.empresa ?? "—"}</td><td>{l.cidade ?? "—"}</td>
+                <td>{l.empresa ?? "—"}</td>
+                <td>{l.email ?? "—"}</td>
+                <td>{l.telefone ?? "—"}</td>
+                <td>{l.cidade ?? "—"}</td>
                 <td>{PASSO_LABELS[l.passo]}</td>
                 <td><span className={`badge ${respClass(l.responsavel).replace("resp-","badge-").replace("badge-ambos","badge-ok").replace("badge-roque","badge-neutral").replace("badge-caetano","badge-blue")}`}>{respLabel(l.responsavel)}</span></td>
                 <td><span className="badge badge-warn">{l.status ?? "—"}</span></td>
@@ -87,7 +90,10 @@ function LeadsTab({ onViewParticipant }: { onViewParticipant?: (id: string) => v
             {orphanParticipants.map((p) => (
               <tr key={`part-${p.id}`} style={{ opacity: 0.85 }}>
                 <td><button className="p-link" onClick={() => onViewParticipant ? onViewParticipant(p.id) : setEditingPart(p)}>{p.nome}</button></td>
-                <td>{p.empresa ?? "—"}</td><td>{p.cidade ?? "—"}</td>
+                <td>{p.empresa ?? "—"}</td>
+                <td>{p.email ?? "—"}</td>
+                <td>{p.telefone ?? "—"}</td>
+                <td>{p.cidade ?? "—"}</td>
                 <td>{PASSO_LABELS[7]}</td>
                 <td><span className="badge badge-blue">Caetano</span></td>
                 <td><span className="badge badge-ok">Confirmado</span></td>
