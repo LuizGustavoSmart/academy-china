@@ -398,6 +398,7 @@ export function useUpdateMensagem() {
 
 // ────────── HELPERS ──────────
 export const PASSO_LABELS: Record<number, string> = {
+  0: "P0 — Cadastro",
   1: "P1 — Abordagem",
   2: "P2 — Qualificação",
   3: "P3 — Mapa enviado",
@@ -405,6 +406,7 @@ export const PASSO_LABELS: Record<number, string> = {
   5: "P5 — Go / No-go",
   6: "P6 — Contrato",
   7: "P7 — Confirmado",
+  8: "Declinado",
 };
 
 export const fmtBRL = (n: number) =>

@@ -87,7 +87,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nota-estrategica{background:var(--gold-light);border:.5px solid rgba(184,134,11,.2);border-left:3px solid var(--gold);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:12px;font-size:12px;color:#6b4c00;line-height:1.5;}
 
 .pipeline-scroll{overflow-x:auto;transform:rotateX(180deg);margin-bottom:20px;}
-.pipeline-track{display:flex;gap:0;min-width:900px;transform:rotateX(180deg);}
+.pipeline-track{display:flex;gap:0;min-width:1260px;transform:rotateX(180deg);}
 .pipeline-stage{flex:1;min-width:140px;}
 .stage-header{padding:10px 14px;background:var(--surface2);border-top:3px solid var(--border);border-right:.5px solid var(--border);border-bottom:.5px solid var(--border);}
 .pipeline-stage:first-child .stage-header{border-left:.5px solid var(--border);border-radius:var(--radius-sm) 0 0 0;}
@@ -98,10 +98,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .pipeline-stage:last-child .stage-body{border-radius:0 0 var(--radius-sm) 0;}
 .pipeline-stage:first-child .stage-body{border-radius:0 0 0 var(--radius-sm);}
 .stage-body.drop-over{background:var(--accent-light);}
+.s0 .stage-header{border-top-color:#52b788;}
 .s1 .stage-header{border-top-color:var(--text3);} .s2 .stage-header{border-top-color:var(--purple);}
 .s3 .stage-header{border-top-color:var(--blue);} .s4 .stage-header{border-top-color:#378add;}
 .s5 .stage-header{border-top-color:var(--amber);} .s6 .stage-header{border-top-color:#d85a30;}
 .s7 .stage-header{border-top-color:var(--teal);}
+.s8 .stage-header{border-top-color:#c0392b;}
 .lead-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:6px;position:relative;user-select:none;}
 .lead-card-handle{position:absolute;top:50%;left:4px;transform:translateY(-50%);color:var(--text3);cursor:grab;font-size:14px;touch-action:none;padding:2px;line-height:1;}
 .lead-card-handle:hover{color:var(--text2);}

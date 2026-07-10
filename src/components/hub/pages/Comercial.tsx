@@ -12,7 +12,7 @@ import { Modal } from "@/components/hub/Modal";
 import { MensagensAccordion } from "@/components/hub/MensagensAccordion";
 import { PendenciasList } from "@/components/hub/PendenciasList";
 
-const STAGES = [1, 2, 3, 4, 5, 6, 7];
+const STAGES = [0, 1, 2, 3, 4, 5, 6, 7, 8];
 
 export function ComercialPage({ sub, onViewParticipant }: { sub: string; onViewParticipant?: (id: string) => void }) {
   if (sub === "leads") return <LeadsTab onViewParticipant={onViewParticipant} />;
@@ -121,7 +121,7 @@ function PipelineTab({ onViewParticipant }: { onViewParticipant?: (id: string) =
   const onDragEnd = (e: DragEndEvent) => {
     const rawId = String(e.active.id);
     const targetStage = e.over?.id != null ? Number(e.over.id) : null;
-    if (!targetStage) return;
+    if (targetStage == null) return;
     if (rawId.startsWith("part-")) {
       const partId = rawId.slice(5);
       const part = orphanParticipants.find((p) => p.id === partId);
