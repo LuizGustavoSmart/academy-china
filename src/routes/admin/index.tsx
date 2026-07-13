@@ -160,11 +160,11 @@ function Index() {
     <AuthGate>
       <div className="app-shell">
         <nav className={`sidebar${collapsed ? " collapsed" : ""}`}>
-          <div className="sidebar-brand" style={{ padding: "18px 16px 14px", display: "flex", justifyContent: "center" }}>
+          <div className="sidebar-brand" style={{ padding: "12px 16px 10px", display: "flex", justifyContent: "center" }}>
             <img
               src="/assets-academy/academy-china-logo.png"
               alt="Academy China 2026"
-              style={{ maxWidth: "100%", height: "auto", display: "block" }}
+              style={{ maxWidth: "82%", height: "auto", display: "block" }}
             />
           </div>
           <div className="sidebar-nav">
