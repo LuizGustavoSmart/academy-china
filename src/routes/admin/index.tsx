@@ -164,7 +164,7 @@ function Index() {
             <img
               src="/assets-academy/academy-china-logo.png"
               alt="Academy China 2026"
-              style={{ maxWidth: "68%", height: "auto", display: "block" }}
+              style={{ maxWidth: "72%", height: "auto", display: "block" }}
             />
           </div>
           <div className="sidebar-nav">
