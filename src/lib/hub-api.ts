@@ -69,6 +69,8 @@ export type Pendencia = {
   status: string;
   ordem: number;
   created_at: string;
+  data_inicio: string | null;
+  data_fim: string | null;
 };
 
 export type FinanceiroConfig = {

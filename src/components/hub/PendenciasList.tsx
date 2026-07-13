@@ -42,6 +42,16 @@ export function PendenciasList({ fase, title }: { fase?: string; title?: string 
               <div className="pend-meta">
                 <span className="pend-tag fase">{p.fase}</span>
                 {p.dono && <span className="pend-tag dono">{p.dono}</span>}
+                {p.data_inicio && (
+                  <span className="pend-tag">
+                    <i className="ti ti-calendar-event" /> {new Date(p.data_inicio + "T00:00:00").toLocaleDateString("pt-BR")}
+                  </span>
+                )}
+                {p.data_fim && (
+                  <span className="pend-tag">
+                    <i className="ti ti-calendar-check" /> {new Date(p.data_fim + "T00:00:00").toLocaleDateString("pt-BR")}
+                  </span>
+                )}
                 {p.impacto && (
                   <span className={`badge ${p.prioridade === "critico" ? "badge-danger" : "badge-warn"}`}>
                     {p.impacto}
@@ -101,14 +111,21 @@ function PendenciaModal({
     dono: pendencia?.dono ?? "",
     prioridade: pendencia?.prioridade ?? "normal",
     impacto: pendencia?.impacto ?? "",
+    data_inicio: pendencia?.data_inicio ?? "",
+    data_fim: pendencia?.data_fim ?? "",
   });
 
   const submit = () => {
     if (!form.titulo.trim()) return;
+    const payload = {
+      ...form,
+      data_inicio: form.data_inicio || null,
+      data_fim: form.data_fim || null,
+    };
     if (pendencia) {
-      update.mutate({ id: pendencia.id, patch: form }, { onSuccess: onClose });
+      update.mutate({ id: pendencia.id, patch: payload }, { onSuccess: onClose });
     } else {
-      create.mutate(form, { onSuccess: onClose });
+      create.mutate(payload, { onSuccess: onClose });
     }
   };
 
@@ -148,6 +165,16 @@ function PendenciaModal({
         <div className="form-group">
           <label className="form-label">Impacto</label>
           <input className="form-input" value={form.impacto ?? ""} onChange={(e) => setForm({ ...form, impacto: e.target.value })} />
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="form-group">
+          <label className="form-label">Data de início</label>
+          <input type="date" className="form-input" value={form.data_inicio ?? ""} onChange={(e) => setForm({ ...form, data_inicio: e.target.value })} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Data final</label>
+          <input type="date" className="form-input" value={form.data_fim ?? ""} onChange={(e) => setForm({ ...form, data_fim: e.target.value })} />
         </div>
       </div>
       <div className="flex-end">
