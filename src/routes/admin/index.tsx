@@ -7,6 +7,7 @@ import { ComercialPage } from "@/components/hub/pages/Comercial";
 import { PreViagemPage } from "@/components/hub/pages/PreViagem";
 import { ViagemPage } from "@/components/hub/pages/Viagem";
 import { PendenciasList } from "@/components/hub/PendenciasList";
+import { AliancasPage } from "@/components/hub/pages/Aliancas";
 import { usePendencias } from "@/lib/hub-api";
 
 import hubCss from "../../styles-hub.css?url";
@@ -102,7 +103,7 @@ export const Route = createFileRoute("/admin/")({
   component: Index,
 });
 
-type Tab = "dashboard" | "participantes" | "financeiro" | "comercial" | "preop" | "operacional" | "pendencias";
+type Tab = "dashboard" | "participantes" | "financeiro" | "comercial" | "preop" | "operacional" | "pendencias" | "aliancas";
 
 const PAGE_META: Record<Tab, { title: string; sub: string }> = {
   dashboard: { title: "Dashboard", sub: "Visão geral da operação" },
@@ -112,6 +113,7 @@ const PAGE_META: Record<Tab, { title: string; sub: string }> = {
   preop: { title: "Pré-viagem", sub: "Etapas · Fase pré-operacional" },
   operacional: { title: "Viagem", sub: "Etapas · Fase operacional" },
   pendencias: { title: "Pendências", sub: "Backlog unificado" },
+  aliancas: { title: "Alianças estratégicas", sub: "Parceiros institucionais da Academy" },
 };
 
 const SUBTABS: Record<string, { id: string; label: string; icon: string }[]> = {
@@ -134,6 +136,10 @@ const SUBTABS: Record<string, { id: string; label: string; icon: string }[]> = {
     { id: "prog", label: "Programação", icon: "ti-map-2" },
     { id: "pend", label: "Pendências", icon: "ti-alert-triangle" },
     { id: "msgs", label: "Mensagens", icon: "ti-message" },
+  ],
+  aliancas: [
+    { id: "dash", label: "Visão geral", icon: "ti-handshake" },
+    { id: "marketing", label: "Marketing", icon: "ti-speakerphone" },
   ],
 };
 
@@ -192,6 +198,12 @@ function Index() {
               label={`Pendências${pendCount > 0 ? ` (${pendCount})` : ""}`}
               onClick={() => switchTab("pendencias")}
             />
+            <NavItem
+              active={tab === "aliancas"}
+              icon="ti-handshake"
+              label="Alianças"
+              onClick={() => switchTab("aliancas")}
+            />
           </div>
           <div className="sidebar-toggle">
             <button className="toggle-btn" onClick={() => setCollapsed(!collapsed)}>
@@ -235,6 +247,7 @@ function Index() {
             {tab === "preop" && <PreViagemPage sub={sub} onViewParticipant={(id) => { switchTab("participantes"); setOpenParticipantId(id); }} />}
             {tab === "operacional" && <ViagemPage sub={sub} />}
             {tab === "pendencias" && <PendenciasList title="Backlog unificado — todas as fases" />}
+            {tab === "aliancas" && <AliancasPage sub={sub} />}
           </div>
         </div>
       </div>
