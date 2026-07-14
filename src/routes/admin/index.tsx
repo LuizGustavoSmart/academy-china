@@ -9,6 +9,7 @@ import { ViagemPage } from "@/components/hub/pages/Viagem";
 import { PendenciasList } from "@/components/hub/PendenciasList";
 import { AliancasPage } from "@/components/hub/pages/Aliancas";
 import { usePendencias } from "@/lib/hub-api";
+import menuLogo from "@/assets/china2026-academy-logo.png.asset.json";
 
 import hubCss from "../../styles-hub.css?url";
 
@@ -168,7 +169,7 @@ function Index() {
         <nav className={`sidebar${collapsed ? " collapsed" : ""}`}>
           <div className="sidebar-brand" style={{ padding: "10px 16px 8px", display: "flex", justifyContent: "center" }}>
             <img
-              src="/assets-academy/academy-china-logo.png"
+              src={menuLogo.url}
               alt="Academy China 2026"
               style={{ maxWidth: "72%", height: "auto", display: "block" }}
             />
