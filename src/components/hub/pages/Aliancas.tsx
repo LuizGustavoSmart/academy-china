@@ -37,11 +37,13 @@ const ALIADOS: Aliado[] = [
       "Associação das Empresas do Mercado Imobiliário de Minas Gerais. Conecta a Academy à liderança do setor imobiliário mineiro, com foco em incorporadoras e loteadoras que buscam benchmark internacional.",
     marketing: {
       foco: "Endosso institucional AELO + prospecção qualificada dentro das associadas.",
-      canais: ["Newsletter AELO", "LinkedIn institucional", "Café com presidentes"],
+      canais: ["Newsletter AELO", "LinkedIn institucional", "Café com presidentes", "Mailing de associados"],
       acoes: [
         { titulo: "Coluna na newsletter", detalhe: "Publicação mensal sobre aprendizados da missão anterior + chamada para 2026." },
         { titulo: "Café com presidentes", detalhe: "Encontro reservado com CEOs de associadas para apresentar a curadoria." },
         { titulo: "Selo AELO", detalhe: "Uso do selo institucional em landing page e peças, reforçando credibilidade." },
+        { titulo: "Envio de material — benefício AELO", detalhe: "Disparo de mailing para associados com material de divulgação da Academy China como benefício da associação." },
+        { titulo: "Apresentação no evento do programa", detalhe: "Apresentação da Academy China no evento do programa AELO em 19/08." },
       ],
     },
   },
