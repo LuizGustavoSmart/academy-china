@@ -2,6 +2,18 @@ import { useState } from "react";
 import { useCreatePendencia, useDeletePendencia, useUpdatePendencia, usePendencias, type Pendencia } from "@/lib/hub-api";
 import { Modal, ConfirmDialog } from "@/components/hub/Modal";
 
+const COLUMNS: { id: string; label: string; icon: string; color: string }[] = [
+  { id: "aberta", label: "A fazer", icon: "ti-circle-dashed", color: "var(--text3)" },
+  { id: "em_andamento", label: "Em andamento", icon: "ti-progress", color: "var(--blue)" },
+  { id: "resolvida", label: "Concluído", icon: "ti-circle-check", color: "var(--teal)" },
+];
+
+const FASE_LABEL: Record<string, string> = {
+  comercial: "Comercial",
+  preop: "Pré-viagem",
+  viagem: "Viagem",
+};
+
 export function PendenciasList({ fase, title }: { fase?: string; title?: string }) {
   const { data: all = [] } = usePendencias();
   const items = fase ? all.filter((p) => p.fase === fase) : all;
@@ -11,72 +23,110 @@ export function PendenciasList({ fase, title }: { fase?: string; title?: string 
   const [creating, setCreating] = useState(false);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
 
+  const byStatus = (st: string) =>
+    items.filter((p) => (st === "aberta" ? p.status !== "em_andamento" && p.status !== "resolvida" : p.status === st));
+
+  const nextStatus = (s: string) =>
+    s === "resolvida" ? "aberta" : s === "em_andamento" ? "resolvida" : "em_andamento";
+  const prevStatus = (s: string) =>
+    s === "aberta" ? "resolvida" : s === "em_andamento" ? "aberta" : "em_andamento";
+
+  const fmt = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+
   return (
     <div className="main">
       <div className="flex-between mb-16">
         <div className="section-label" style={{ margin: 0 }}>
-          {title ?? "Pendências"}
+          {title ?? "Plano de ação"}
         </div>
         <button className="btn-primary" onClick={() => setCreating(true)} style={{ fontSize: 12, padding: "7px 14px" }}>
-          <i className="ti ti-plus" /> Nova pendência
+          <i className="ti ti-plus" /> Nova ação
         </button>
       </div>
-      <div className="pendencia-list">
-        {items.length === 0 && (
-          <div style={{ padding: 24, textAlign: "center", color: "var(--text3)", fontSize: 12 }}>
-            Nenhuma pendência registrada.
-          </div>
-        )}
-        {items.map((p) => (
-          <div
-            key={p.id}
-            className={`pendencia-item ${p.prioridade === "critico" ? "pend-crit" : p.prioridade === "alta" ? "pend-warn" : ""}`}
-            style={{ opacity: p.status === "resolvida" ? 0.55 : 1 }}
-          >
-            <i className={`ti ${p.prioridade === "critico" ? "ti-alert-circle" : "ti-alert-triangle"} pend-icon`} />
-            <div className="pend-content">
-              <div className="pend-title" style={{ textDecoration: p.status === "resolvida" ? "line-through" : "none" }}>
-                {p.titulo}
-              </div>
-              {p.descricao && <div className="pend-desc">{p.descricao}</div>}
-              <div className="pend-meta">
-                <span className="pend-tag fase">{p.fase}</span>
-                {p.dono && <span className="pend-tag dono">{p.dono}</span>}
-                {p.data_inicio && (
-                  <span className="pend-tag">
-                    <i className="ti ti-calendar-event" /> {new Date(p.data_inicio + "T00:00:00").toLocaleDateString("pt-BR")}
-                  </span>
-                )}
-                {p.data_fim && (
-                  <span className="pend-tag">
-                    <i className="ti ti-calendar-check" /> {new Date(p.data_fim + "T00:00:00").toLocaleDateString("pt-BR")}
-                  </span>
-                )}
-                {p.impacto && (
-                  <span className={`badge ${p.prioridade === "critico" ? "badge-danger" : "badge-warn"}`}>
-                    {p.impacto}
-                  </span>
-                )}
-                <span className={`badge ${p.status === "resolvida" ? "badge-ok" : "badge-neutral"}`}>{p.status}</span>
-                <div className="pend-actions">
-                  <button
-                    title={p.status === "resolvida" ? "Reabrir" : "Marcar como resolvida"}
-                    onClick={() => update.mutate({ id: p.id, patch: { status: p.status === "resolvida" ? "aberta" : "resolvida" } })}
-                  >
-                    <i className={`ti ${p.status === "resolvida" ? "ti-arrow-back" : "ti-check"}`} />
-                  </button>
-                  <button title="Editar" onClick={() => setEditing(p)}>
-                    <i className="ti ti-pencil" />
-                  </button>
-                  <button title="Excluir" onClick={() => setConfirmDel(p.id)}>
-                    <i className="ti ti-trash" />
-                  </button>
+      {items.length === 0 ? (
+        <div style={{ padding: 32, textAlign: "center", color: "var(--text3)", fontSize: 12, border: ".5px dashed var(--border)", borderRadius: "var(--radius)" }}>
+          Nenhuma ação registrada. Clique em "Nova ação" para começar.
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14, alignItems: "start" }}>
+          {COLUMNS.map((col) => {
+            const list = byStatus(col.id);
+            return (
+              <div key={col.id} style={{ background: "var(--surface2)", border: ".5px solid var(--border)", borderRadius: "var(--radius)", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 6px 8px", borderBottom: ".5px solid var(--border)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: col.color }}>
+                    <i className={`ti ${col.icon}`} style={{ fontSize: 14 }} />
+                    {col.label}
+                  </div>
+                  <span style={{ fontSize: 11, color: "var(--text3)", background: "var(--surface)", border: ".5px solid var(--border)", borderRadius: 999, padding: "1px 8px" }}>{list.length}</span>
                 </div>
+                {list.length === 0 && (
+                  <div style={{ fontSize: 11, color: "var(--text3)", textAlign: "center", padding: "12px 4px" }}>—</div>
+                )}
+                {list.map((p) => {
+                  const isDone = p.status === "resolvida";
+                  const borderL = p.prioridade === "critico" ? "var(--accent)" : p.prioridade === "alta" ? "var(--amber)" : "var(--border-strong)";
+                  return (
+                    <div key={p.id} style={{
+                      background: "var(--surface)", border: ".5px solid var(--border)", borderLeft: `3px solid ${borderL}`,
+                      borderRadius: "var(--radius-sm)", padding: "10px 11px", display: "flex", flexDirection: "column", gap: 6,
+                      opacity: isDone ? 0.65 : 1,
+                    }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 6 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, textDecoration: isDone ? "line-through" : "none", lineHeight: 1.35 }}>
+                          {p.titulo}
+                        </div>
+                        <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                          <button title="Voltar" onClick={() => update.mutate({ id: p.id, patch: { status: prevStatus(p.status) } })} style={iconBtn}>
+                            <i className="ti ti-chevron-left" />
+                          </button>
+                          <button title="Avançar" onClick={() => update.mutate({ id: p.id, patch: { status: nextStatus(p.status) } })} style={iconBtn}>
+                            <i className="ti ti-chevron-right" />
+                          </button>
+                        </div>
+                      </div>
+                      {p.descricao && (
+                        <div style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>{p.descricao}</div>
+                      )}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+                        {!fase && (
+                          <span style={chipStyle}>{FASE_LABEL[p.fase] ?? p.fase}</span>
+                        )}
+                        {p.dono && <span style={{ ...chipStyle, color: "var(--blue)", background: "var(--blue-light)" }}>{p.dono}</span>}
+                        {p.prioridade === "critico" && <span style={{ ...chipStyle, color: "var(--accent)", background: "var(--accent-light)" }}>Crítico</span>}
+                        {p.prioridade === "alta" && <span style={{ ...chipStyle, color: "var(--amber)", background: "var(--amber-light)" }}>Alta</span>}
+                        {p.data_inicio && (
+                          <span style={{ ...chipStyle, color: "var(--text2)" }}>
+                            <i className="ti ti-calendar-event" style={{ fontSize: 10, marginRight: 3 }} />
+                            {fmt(p.data_inicio)}
+                          </span>
+                        )}
+                        {p.data_fim && (
+                          <span style={{ ...chipStyle, color: "var(--text2)" }}>
+                            <i className="ti ti-flag" style={{ fontSize: 10, marginRight: 3 }} />
+                            {fmt(p.data_fim)}
+                          </span>
+                        )}
+                      </div>
+                      {p.impacto && (
+                        <div style={{ fontSize: 10, color: "var(--text3)", fontStyle: "italic" }}>Impacto: {p.impacto}</div>
+                      )}
+                      <div style={{ display: "flex", gap: 4, justifyContent: "flex-end", borderTop: ".5px dashed var(--border)", paddingTop: 6, marginTop: 2 }}>
+                        <button title="Editar" onClick={() => setEditing(p)} style={iconBtn}>
+                          <i className="ti ti-pencil" />
+                        </button>
+                        <button title="Excluir" onClick={() => setConfirmDel(p.id)} style={iconBtn}>
+                          <i className="ti ti-trash" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-          </div>
-        ))}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {(creating || editing) && (
         <PendenciaModal
@@ -91,13 +141,23 @@ export function PendenciasList({ fase, title }: { fase?: string; title?: string 
         open={!!confirmDel}
         onClose={() => setConfirmDel(null)}
         onConfirm={() => confirmDel && del.mutate(confirmDel)}
-        title="Excluir pendência"
+        title="Excluir ação"
         message="Tem certeza? Essa ação não pode ser desfeita."
         confirmLabel="Excluir"
       />
     </div>
   );
 }
+
+const chipStyle: React.CSSProperties = {
+  fontSize: 10, padding: "2px 7px", borderRadius: 999, background: "var(--surface2)", color: "var(--text2)",
+  border: ".5px solid var(--border)", fontWeight: 500, display: "inline-flex", alignItems: "center",
+};
+
+const iconBtn: React.CSSProperties = {
+  border: ".5px solid var(--border)", background: "var(--surface)", borderRadius: 4, padding: "2px 5px",
+  cursor: "pointer", color: "var(--text2)", fontSize: 12, lineHeight: 1,
+};
 
 function PendenciaModal({
   open, onClose, pendencia, fixedFase,
@@ -111,6 +171,7 @@ function PendenciaModal({
     dono: pendencia?.dono ?? "",
     prioridade: pendencia?.prioridade ?? "normal",
     impacto: pendencia?.impacto ?? "",
+    status: pendencia?.status ?? "aberta",
     data_inicio: pendencia?.data_inicio ?? "",
     data_fim: pendencia?.data_fim ?? "",
   });
@@ -130,7 +191,7 @@ function PendenciaModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={pendencia ? "Editar pendência" : "Nova pendência"}>
+    <Modal open={open} onClose={onClose} title={pendencia ? "Editar ação" : "Nova ação"}>
       <div className="form-group">
         <label className="form-label">Título</label>
         <input className="form-input" value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />
@@ -159,23 +220,34 @@ function PendenciaModal({
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <div className="form-group">
-          <label className="form-label">Dono</label>
-          <input className="form-input" value={form.dono ?? ""} onChange={(e) => setForm({ ...form, dono: e.target.value })} />
+          <label className="form-label">Status</label>
+          <select className="form-select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+            <option value="aberta">A fazer</option>
+            <option value="em_andamento">Em andamento</option>
+            <option value="resolvida">Concluído</option>
+          </select>
         </div>
         <div className="form-group">
-          <label className="form-label">Impacto</label>
-          <input className="form-input" value={form.impacto ?? ""} onChange={(e) => setForm({ ...form, impacto: e.target.value })} />
+          <label className="form-label">Dono</label>
+          <input className="form-input" value={form.dono ?? ""} onChange={(e) => setForm({ ...form, dono: e.target.value })} />
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <div className="form-group">
+          <label className="form-label">Impacto</label>
+          <input className="form-input" value={form.impacto ?? ""} onChange={(e) => setForm({ ...form, impacto: e.target.value })} />
+        </div>
+        <div className="form-group">
           <label className="form-label">Data de início</label>
           <input type="date" className="form-input" value={form.data_inicio ?? ""} onChange={(e) => setForm({ ...form, data_inicio: e.target.value })} />
         </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <div className="form-group">
           <label className="form-label">Data final</label>
           <input type="date" className="form-input" value={form.data_fim ?? ""} onChange={(e) => setForm({ ...form, data_fim: e.target.value })} />
         </div>
+        <div />
       </div>
       <div className="flex-end">
         <button className="btn-secondary" onClick={onClose}>Cancelar</button>
