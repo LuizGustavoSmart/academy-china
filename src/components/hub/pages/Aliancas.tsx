@@ -5,6 +5,7 @@ type Aliado = {
   nome: string;
   responsavel: string;
   descricao: string;
+  mensagem_envio_material?: string;
   marketing: {
     foco: string;
     canais: string[];
@@ -35,6 +36,8 @@ const ALIADOS: Aliado[] = [
     responsavel: "Caetano Andrade",
     descricao:
       "Associação das Empresas do Mercado Imobiliário de Minas Gerais. Conecta a Academy à liderança do setor imobiliário mineiro, com foco em incorporadoras e loteadoras que buscam benchmark internacional.",
+    mensagem_envio_material:
+      "Olá! Como associado AELO, você tem acesso exclusivo à Academy China 2026 — uma imersão curada na China para líderes do mercado imobiliário. Confira o material em anexo e agende uma conversa para saber mais.",
     marketing: {
       foco: "Endosso institucional AELO + prospecção qualificada dentro das associadas.",
       canais: ["Newsletter AELO", "LinkedIn institucional", "Café com presidentes", "Mailing de associados"],
