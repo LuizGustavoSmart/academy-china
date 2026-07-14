@@ -5,6 +5,7 @@ type Aliado = {
   nome: string;
   responsavel: string;
   descricao: string;
+  mensagem_envio_material?: string;
   marketing: {
     foco: string;
     canais: string[];
@@ -35,13 +36,17 @@ const ALIADOS: Aliado[] = [
     responsavel: "Caetano Andrade",
     descricao:
       "Associação das Empresas do Mercado Imobiliário de Minas Gerais. Conecta a Academy à liderança do setor imobiliário mineiro, com foco em incorporadoras e loteadoras que buscam benchmark internacional.",
+    mensagem_envio_material:
+      "Olá! Como associado AELO, você tem acesso exclusivo à Academy China 2026 — uma imersão curada na China para líderes do mercado imobiliário. Confira o material em anexo e agende uma conversa para saber mais.",
     marketing: {
       foco: "Endosso institucional AELO + prospecção qualificada dentro das associadas.",
-      canais: ["Newsletter AELO", "LinkedIn institucional", "Café com presidentes"],
+      canais: ["Newsletter AELO", "LinkedIn institucional", "Café com presidentes", "Mailing de associados"],
       acoes: [
         { titulo: "Coluna na newsletter", detalhe: "Publicação mensal sobre aprendizados da missão anterior + chamada para 2026." },
         { titulo: "Café com presidentes", detalhe: "Encontro reservado com CEOs de associadas para apresentar a curadoria." },
         { titulo: "Selo AELO", detalhe: "Uso do selo institucional em landing page e peças, reforçando credibilidade." },
+        { titulo: "Envio de material — benefício AELO", detalhe: "Disparo de mailing para associados com material de divulgação da Academy China como benefício da associação." },
+        { titulo: "Apresentação no evento do programa", detalhe: "Apresentação da Academy China no evento do programa AELO em 19/08." },
       ],
     },
   },
@@ -66,12 +71,19 @@ const ALIADOS: Aliado[] = [
 export function AliancasPage({ sub }: { sub: string }) {
   const [aliadoId, setAliadoId] = useState<string>(ALIADOS[0].id);
   const aliado = ALIADOS.find((a) => a.id === aliadoId) ?? ALIADOS[0];
+  const [mensagens, setMensagens] = useState<Record<string, string>>(() =>
+    Object.fromEntries(ALIADOS.map((a) => [a.id, a.mensagem_envio_material ?? ""]))
+  );
 
   if (sub === "marketing") {
     return (
       <div className="main">
         <AliadoTabs aliadoId={aliadoId} setAliadoId={setAliadoId} />
-        <MarketingView aliado={aliado} />
+        <MarketingView
+          aliado={aliado}
+          mensagemEnvio={mensagens[aliado.id]}
+          onMensagemChange={(v) => setMensagens((prev) => ({ ...prev, [aliado.id]: v }))}
+        />
       </div>
     );
   }
@@ -142,7 +154,16 @@ function AliadoTabs({ aliadoId, setAliadoId }: { aliadoId: string; setAliadoId: 
   );
 }
 
-function MarketingView({ aliado }: { aliado: Aliado }) {
+function MarketingView({
+  aliado,
+  mensagemEnvio,
+  onMensagemChange,
+}: {
+  aliado: Aliado;
+  mensagemEnvio?: string;
+  onMensagemChange?: (v: string) => void;
+}) {
+  const mostrarMensagem = aliado.id === "aelo";
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div
@@ -188,6 +209,41 @@ function MarketingView({ aliado }: { aliado: Aliado }) {
           ))}
         </div>
       </div>
+
+      {mostrarMensagem && (
+        <div
+          style={{
+            background: "var(--surface)",
+            border: ".5px solid var(--border)",
+            borderRadius: "var(--radius)",
+            padding: 18,
+          }}
+        >
+          <div style={{ fontSize: 11, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 10 }}>
+            Mensagem do envio de material
+          </div>
+          <textarea
+            value={mensagemEnvio}
+            onChange={(e) => onMensagemChange?.(e.target.value)}
+            rows={5}
+            style={{
+              width: "100%",
+              padding: 10,
+              fontSize: 13,
+              lineHeight: 1.5,
+              color: "var(--text)",
+              background: "var(--bg)",
+              border: ".5px solid var(--border)",
+              borderRadius: "var(--radius)",
+              resize: "vertical",
+              fontFamily: "inherit",
+            }}
+          />
+          <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 8 }}>
+            Esta mensagem acompanhará o material disparado por mailing aos associados AELO.
+          </div>
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
         {aliado.marketing.acoes.map((a) => (
