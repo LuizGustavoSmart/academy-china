@@ -49,6 +49,7 @@ export type Lead = {
   telefone: string | null;
   mensagem: string | null;
   origem: string | null;
+  cadastrado_por: string | null;
 };
 
 export type Touchpoint = {
