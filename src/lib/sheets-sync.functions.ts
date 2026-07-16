@@ -7,22 +7,10 @@ const SHEET_NAME = "CRM";
 const GATEWAY = "https://connector-gateway.lovable.dev/google_sheets/v4";
 
 const HEADERS = [
-  "ID",
+  "Data",
   "Nome",
-  "Cargo",
-  "Empresa",
-  "Cidade",
-  "Email",
+  "E-mail",
   "Telefone",
-  "Passo",
-  "Status",
-  "Responsável",
-  "Origem",
-  "Observações",
-  "Mensagem",
-  "Cadastrado por",
-  "Criado em",
-  "Atualizado em",
 ];
 
 function authHeaders() {
@@ -84,32 +72,20 @@ export const syncCrmToSheet = createServerFn({ method: "POST" }).handler(
 
     const { data, error } = await supabase
       .from("leads_crm")
-      .select(
-        "id,nome,cargo,empresa,cidade,email,telefone,passo,status,responsavel,origem,observacoes,mensagem,cadastrado_por,created_at,updated_at",
-      )
-      .order("ordem", { ascending: true });
+      .select("nome,email,telefone,created_at")
+      .order("created_at", { ascending: false });
 
     if (error) throw new Error(`Erro ao ler leads: ${error.message}`);
 
     await ensureSheet();
 
     const rows = (data ?? []).map((l) => [
-      fmt(l.id),
+      l.created_at
+        ? new Date(l.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })
+        : "",
       fmt(l.nome),
-      fmt(l.cargo),
-      fmt(l.empresa),
-      fmt(l.cidade),
       fmt(l.email),
       fmt(l.telefone),
-      fmt(l.passo),
-      fmt(l.status),
-      fmt(l.responsavel),
-      fmt(l.origem),
-      fmt(l.observacoes),
-      fmt(l.mensagem),
-      fmt(l.cadastrado_por),
-      fmt(l.created_at),
-      fmt(l.updated_at),
     ]);
 
     // Limpa aba e escreve tudo (header + rows)
