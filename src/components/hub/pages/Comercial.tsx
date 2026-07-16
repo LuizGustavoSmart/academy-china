@@ -71,17 +71,19 @@ function LeadsTab({ onViewParticipant }: { onViewParticipant?: (id: string) => v
       </div>
       <div className="table-wrap">
         <table>
-          <thead><tr><th>Nome</th><th>Empresa</th><th>Email</th><th>Telefone</th><th>Cidade</th><th>Passo</th><th>Responsável</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Data</th><th>Nome</th><th>Empresa</th><th>Email</th><th>Telefone</th><th>Cidade</th><th>Passo</th><th>Cadastrado por</th><th>Responsável</th><th>Status</th><th></th></tr></thead>
           <tbody>
-            {leads.length === 0 && orphanParticipants.length === 0 && <tr><td colSpan={9} style={{ textAlign: "center", color: "var(--text3)", padding: 16 }}>Nenhum lead cadastrado.</td></tr>}
+            {leads.length === 0 && orphanParticipants.length === 0 && <tr><td colSpan={11} style={{ textAlign: "center", color: "var(--text3)", padding: 16 }}>Nenhum lead cadastrado.</td></tr>}
             {leads.map((l) => (
               <tr key={l.id}>
+                <td style={{ fontSize: 11, color: "var(--text2)" }}>{l.created_at ? new Date(l.created_at).toLocaleDateString("pt-BR") : "—"}</td>
                 <td><button className="p-link" onClick={() => setEditing(l)}>{l.nome}</button></td>
                 <td>{l.empresa ?? "—"}</td>
                 <td>{l.email ?? "—"}</td>
                 <td>{l.telefone ?? "—"}</td>
                 <td>{l.cidade ?? "—"}</td>
                 <td>{PASSO_LABELS[l.passo]}</td>
+                <td>{l.cadastrado_por ?? "—"}</td>
                 <td><span className={`badge ${respClass(l.responsavel).replace("resp-","badge-").replace("badge-ambos","badge-ok").replace("badge-roque","badge-neutral").replace("badge-caetano","badge-blue")}`}>{respLabel(l.responsavel)}</span></td>
                 <td><span className="badge badge-warn">{l.status ?? "—"}</span></td>
                 <td><button className="btn-secondary" style={{ padding: "4px 10px", fontSize: 11 }} onClick={() => setEditing(l)}><i className="ti ti-pencil" /></button></td>
@@ -89,12 +91,14 @@ function LeadsTab({ onViewParticipant }: { onViewParticipant?: (id: string) => v
             ))}
             {orphanParticipants.map((p) => (
               <tr key={`part-${p.id}`} style={{ opacity: 0.85 }}>
+                <td style={{ fontSize: 11, color: "var(--text2)" }}>{p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "—"}</td>
                 <td><button className="p-link" onClick={() => onViewParticipant ? onViewParticipant(p.id) : setEditingPart(p)}>{p.nome}</button></td>
                 <td>{p.empresa ?? "—"}</td>
                 <td>{p.email ?? "—"}</td>
                 <td>{p.telefone ?? "—"}</td>
                 <td>{p.cidade ?? "—"}</td>
                 <td>{PASSO_LABELS[7]}</td>
+                <td>—</td>
                 <td><span className="badge badge-blue">Caetano</span></td>
                 <td><span className="badge badge-ok">Confirmado</span></td>
                 <td><button className="btn-secondary" style={{ padding: "4px 10px", fontSize: 11 }} onClick={() => setEditingPart(p)}><i className="ti ti-pencil" /></button></td>
