@@ -107,9 +107,10 @@ export function SincronizacaoPage() {
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>
           Colunas exportadas
         </div>
-        ID · Nome · Cargo · Empresa · Cidade · Email · Telefone · Passo · Status ·
-        Responsável · Origem · Observações · Mensagem · Cadastrado por ·
-        Criado em · Atualizado em
+        Data · Nome · E-mail · Telefone
+        <div style={{ marginTop: 8, color: "var(--text3)" }}>
+          Nome do Anúncio e Conjunto não existem no CRM — pulados.
+        </div>
       </div>
     </div>
   );
