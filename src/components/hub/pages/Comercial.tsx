@@ -71,17 +71,19 @@ function LeadsTab({ onViewParticipant }: { onViewParticipant?: (id: string) => v
       </div>
       <div className="table-wrap">
         <table>
-          <thead><tr><th>Nome</th><th>Empresa</th><th>Email</th><th>Telefone</th><th>Cidade</th><th>Passo</th><th>Responsável</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Data</th><th>Nome</th><th>Empresa</th><th>Email</th><th>Telefone</th><th>Cidade</th><th>Passo</th><th>Cadastrado por</th><th>Responsável</th><th>Status</th><th></th></tr></thead>
           <tbody>
-            {leads.length === 0 && orphanParticipants.length === 0 && <tr><td colSpan={9} style={{ textAlign: "center", color: "var(--text3)", padding: 16 }}>Nenhum lead cadastrado.</td></tr>}
+            {leads.length === 0 && orphanParticipants.length === 0 && <tr><td colSpan={11} style={{ textAlign: "center", color: "var(--text3)", padding: 16 }}>Nenhum lead cadastrado.</td></tr>}
             {leads.map((l) => (
               <tr key={l.id}>
+                <td style={{ fontSize: 11, color: "var(--text2)" }}>{l.created_at ? new Date(l.created_at).toLocaleDateString("pt-BR") : "—"}</td>
                 <td><button className="p-link" onClick={() => setEditing(l)}>{l.nome}</button></td>
                 <td>{l.empresa ?? "—"}</td>
                 <td>{l.email ?? "—"}</td>
                 <td>{l.telefone ?? "—"}</td>
                 <td>{l.cidade ?? "—"}</td>
                 <td>{PASSO_LABELS[l.passo]}</td>
+                <td>{l.cadastrado_por ?? "—"}</td>
                 <td><span className={`badge ${respClass(l.responsavel).replace("resp-","badge-").replace("badge-ambos","badge-ok").replace("badge-roque","badge-neutral").replace("badge-caetano","badge-blue")}`}>{respLabel(l.responsavel)}</span></td>
                 <td><span className="badge badge-warn">{l.status ?? "—"}</span></td>
                 <td><button className="btn-secondary" style={{ padding: "4px 10px", fontSize: 11 }} onClick={() => setEditing(l)}><i className="ti ti-pencil" /></button></td>
@@ -89,12 +91,14 @@ function LeadsTab({ onViewParticipant }: { onViewParticipant?: (id: string) => v
             ))}
             {orphanParticipants.map((p) => (
               <tr key={`part-${p.id}`} style={{ opacity: 0.85 }}>
+                <td style={{ fontSize: 11, color: "var(--text2)" }}>{p.created_at ? new Date(p.created_at).toLocaleDateString("pt-BR") : "—"}</td>
                 <td><button className="p-link" onClick={() => onViewParticipant ? onViewParticipant(p.id) : setEditingPart(p)}>{p.nome}</button></td>
                 <td>{p.empresa ?? "—"}</td>
                 <td>{p.email ?? "—"}</td>
                 <td>{p.telefone ?? "—"}</td>
                 <td>{p.cidade ?? "—"}</td>
                 <td>{PASSO_LABELS[7]}</td>
+                <td>—</td>
                 <td><span className="badge badge-blue">Caetano</span></td>
                 <td><span className="badge badge-ok">Confirmado</span></td>
                 <td><button className="btn-secondary" style={{ padding: "4px 10px", fontSize: 11 }} onClick={() => setEditingPart(p)}><i className="ti ti-pencil" /></button></td>
@@ -237,7 +241,7 @@ function OrphanEditModal({ participant, onClose }: { participant: Participant; o
 function LeadModal({ open, onClose, initialPasso, lead }: { open: boolean; onClose: () => void; initialPasso?: number; lead?: Lead }) {
   const create = useCreateLead();
   const update = useUpdateLead();
-  const [form, setForm] = useState({ nome: lead?.nome ?? "", cargo: lead?.cargo ?? "", empresa: lead?.empresa ?? "", cidade: lead?.cidade ?? "", email: lead?.email ?? "", telefone: lead?.telefone ?? "", passo: lead?.passo ?? initialPasso ?? 1, responsavel: lead?.responsavel ?? "caetano", status: lead?.status ?? "abordado", observacoes: lead?.observacoes ?? "" });
+  const [form, setForm] = useState({ nome: lead?.nome ?? "", cargo: lead?.cargo ?? "", empresa: lead?.empresa ?? "", cidade: lead?.cidade ?? "", email: lead?.email ?? "", telefone: lead?.telefone ?? "", passo: lead?.passo ?? initialPasso ?? 0, responsavel: lead?.responsavel ?? "caetano", status: lead?.status ?? "abordado", observacoes: lead?.observacoes ?? "", cadastrado_por: lead?.cadastrado_por ?? "Caetano" });
   const submit = () => {
     if (!form.nome.trim()) return;
     if (lead) { update.mutate({ id: lead.id, patch: form }, { onSuccess: onClose }); } else { create.mutate(form, { onSuccess: onClose }); }
@@ -254,6 +258,7 @@ function LeadModal({ open, onClose, initialPasso, lead }: { open: boolean; onClo
         <div className="form-group"><label className="form-label">Passo</label><select className="form-select" value={form.passo} onChange={(e) => setForm({ ...form, passo: Number(e.target.value) })}>{STAGES.map((s) => <option key={s} value={s}>{PASSO_LABELS[s]}</option>)}</select></div>
         <div className="form-group"><label className="form-label">Responsável</label><select className="form-select" value={form.responsavel} onChange={(e) => setForm({ ...form, responsavel: e.target.value })}><option value="roque">Roque</option><option value="caetano">Caetano</option><option value="ambos">Caetano + Roque</option></select></div>
         <div className="form-group"><label className="form-label">Status</label><input className="form-input" value={form.status ?? ""} onChange={(e) => setForm({ ...form, status: e.target.value })} /></div>
+        <div className="form-group"><label className="form-label">Cadastrado por</label><select className="form-select" value={form.cadastrado_por} onChange={(e) => setForm({ ...form, cadastrado_por: e.target.value })}><option value="Caetano">Caetano</option><option value="Joyce">Joyce</option><option value="Roque">Roque</option><option value="Google Sheets">Google Sheets</option></select></div>
       </div>
       <div className="form-group"><label className="form-label">Observações</label><textarea className="form-textarea" style={{ minHeight: 80 }} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} /></div>
       <div className="flex-end"><button className="btn-secondary" onClick={onClose}>Cancelar</button><button className="btn-primary" onClick={submit}>{lead ? "Salvar" : "Adicionar"}</button></div>

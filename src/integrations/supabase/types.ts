@@ -124,6 +124,7 @@ export type Database = {
       }
       leads_crm: {
         Row: {
+          cadastrado_por: string | null
           cargo: string | null
           cidade: string | null
           created_at: string
@@ -144,6 +145,7 @@ export type Database = {
           user_agent: string | null
         }
         Insert: {
+          cadastrado_por?: string | null
           cargo?: string | null
           cidade?: string | null
           created_at?: string
@@ -164,6 +166,7 @@ export type Database = {
           user_agent?: string | null
         }
         Update: {
+          cadastrado_por?: string | null
           cargo?: string | null
           cidade?: string | null
           created_at?: string
