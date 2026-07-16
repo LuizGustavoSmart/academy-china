@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ApiPublicLeadsRouteImport } from './routes/api/public/leads'
+import { Route as ApiPublicHooksSyncChinaSheetRouteImport } from './routes/api/public/hooks/sync-china-sheet'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +29,58 @@ const ApiPublicLeadsRoute = ApiPublicLeadsRouteImport.update({
   path: '/api/public/leads',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksSyncChinaSheetRoute =
+  ApiPublicHooksSyncChinaSheetRouteImport.update({
+    id: '/api/public/hooks/sync-china-sheet',
+    path: '/api/public/hooks/sync-china-sheet',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/leads': typeof ApiPublicLeadsRoute
+  '/api/public/hooks/sync-china-sheet': typeof ApiPublicHooksSyncChinaSheetRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminIndexRoute
   '/api/public/leads': typeof ApiPublicLeadsRoute
+  '/api/public/hooks/sync-china-sheet': typeof ApiPublicHooksSyncChinaSheetRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/leads': typeof ApiPublicLeadsRoute
+  '/api/public/hooks/sync-china-sheet': typeof ApiPublicHooksSyncChinaSheetRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin/' | '/api/public/leads'
+  fullPaths:
+    | '/'
+    | '/admin/'
+    | '/api/public/leads'
+    | '/api/public/hooks/sync-china-sheet'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/api/public/leads'
-  id: '__root__' | '/' | '/admin/' | '/api/public/leads'
+  to:
+    | '/'
+    | '/admin'
+    | '/api/public/leads'
+    | '/api/public/hooks/sync-china-sheet'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin/'
+    | '/api/public/leads'
+    | '/api/public/hooks/sync-china-sheet'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminIndexRoute: typeof AdminIndexRoute
   ApiPublicLeadsRoute: typeof ApiPublicLeadsRoute
+  ApiPublicHooksSyncChinaSheetRoute: typeof ApiPublicHooksSyncChinaSheetRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +106,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicLeadsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/sync-china-sheet': {
+      id: '/api/public/hooks/sync-china-sheet'
+      path: '/api/public/hooks/sync-china-sheet'
+      fullPath: '/api/public/hooks/sync-china-sheet'
+      preLoaderRoute: typeof ApiPublicHooksSyncChinaSheetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +120,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminIndexRoute: AdminIndexRoute,
   ApiPublicLeadsRoute: ApiPublicLeadsRoute,
+  ApiPublicHooksSyncChinaSheetRoute: ApiPublicHooksSyncChinaSheetRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
