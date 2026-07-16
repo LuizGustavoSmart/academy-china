@@ -200,11 +200,20 @@ function LeadCard({ lead, onDelete, onEdit }: { lead: Lead; onDelete: () => void
       </div>
       <div className="lead-meta">{[lead.cargo, lead.cidade].filter(Boolean).join(" · ") || "—"}</div>
       {(lead.email || lead.telefone) && <div className="lead-meta" style={{ opacity: 0.85 }}>{lead.email || lead.telefone}</div>}
-      <div className="lead-meta" style={{ opacity: 0.75, fontSize: 10 }}>
-        {lead.created_at ? new Date(lead.created_at).toLocaleDateString("pt-BR") : "—"}
-        {lead.cadastrado_por ? ` · ${lead.cadastrado_por}` : ""}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+        {lead.created_at && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, color: "var(--text3)" }}>
+            <i className="ti ti-calendar" style={{ fontSize: 10 }} />
+            {new Date(lead.created_at).toLocaleDateString("pt-BR")}
+          </span>
+        )}
+        {lead.cadastrado_por && (
+          <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 10, background: "var(--surface2, rgba(255,255,255,0.06))", color: "var(--text2)", letterSpacing: 0.2 }}>
+            {lead.cadastrado_por}
+          </span>
+        )}
       </div>
-      <span className={`lead-resp ${respClass(lead.responsavel)}`}><i className="ti ti-user" style={{ fontSize: 10 }} /> {respLabel(lead.responsavel)}</span>
+      <span className={`lead-resp ${respClass(lead.responsavel)}`} style={{ marginTop: 6 }}><i className="ti ti-user" style={{ fontSize: 10 }} /> {respLabel(lead.responsavel)}</span>
     </div>
   );
 }
