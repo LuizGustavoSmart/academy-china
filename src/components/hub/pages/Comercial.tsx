@@ -200,6 +200,10 @@ function LeadCard({ lead, onDelete, onEdit }: { lead: Lead; onDelete: () => void
       </div>
       <div className="lead-meta">{[lead.cargo, lead.cidade].filter(Boolean).join(" · ") || "—"}</div>
       {(lead.email || lead.telefone) && <div className="lead-meta" style={{ opacity: 0.85 }}>{lead.email || lead.telefone}</div>}
+      <div className="lead-meta" style={{ opacity: 0.75, fontSize: 10 }}>
+        {lead.created_at ? new Date(lead.created_at).toLocaleDateString("pt-BR") : "—"}
+        {lead.cadastrado_por ? ` · ${lead.cadastrado_por}` : ""}
+      </div>
       <span className={`lead-resp ${respClass(lead.responsavel)}`}><i className="ti ti-user" style={{ fontSize: 10 }} /> {respLabel(lead.responsavel)}</span>
     </div>
   );
