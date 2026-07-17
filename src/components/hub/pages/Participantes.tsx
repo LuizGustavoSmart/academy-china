@@ -32,12 +32,28 @@ function photoDownloadUrl(p: Participant): string {
   return `${p.foto_url}${p.foto_url!.includes("?") ? "&" : "?"}download=${filename}`;
 }
 
+/** Dispara um download por vez, escalonado — abrir vários <a download> juntos costuma ser
+ * bloqueado ou parcialmente ignorado pelo navegador. */
+function downloadPhotosSequentially(participants: Participant[]) {
+  participants.forEach((p, i) => {
+    setTimeout(() => {
+      const a = document.createElement("a");
+      a.href = photoDownloadUrl(p);
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }, i * 400);
+  });
+}
+
 export function ParticipantesPage({ openId, setOpenId }: { openId: string | null; setOpenId: (id: string | null) => void }) {
   const { data: all = [] } = useParticipants();
   // Conta como participante quem já assinou contrato OU respondeu o formulário público
   // (mesmo critério da coluna "Entrada" no Kanban de pré-viagem).
   const list = all.filter((p) => p.contrato_status === "assinado" || p.origem === "formulario");
   const [creating, setCreating] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   if (openId) {
     // Busca em `all`, não em `list`: participantes recém-criados (ex.: pelo formulário) ainda
@@ -46,27 +62,56 @@ export function ParticipantesPage({ openId, setOpenId }: { openId: string | null
     if (p) return <ProfileView participant={p} onBack={() => setOpenId(null)} />;
   }
 
+  const withPhoto = list.filter((p) => p.foto_url);
+  const allWithPhotoSelected = withPhoto.length > 0 && withPhoto.every((p) => selected.has(p.id));
+  const toggleAll = () => setSelected(allWithPhotoSelected ? new Set() : new Set(withPhoto.map((p) => p.id)));
+  const toggleOne = (id: string) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const selectedWithPhoto = list.filter((p) => selected.has(p.id) && p.foto_url);
+
   return (
     <div className="main">
       <div className="flex-between mb-16">
         <div className="section-label" style={{ margin: 0 }}>Participantes</div>
-        <button className="btn-primary" onClick={() => setCreating(true)} style={{ fontSize: 12, padding: "7px 14px" }}>
-          <i className="ti ti-plus" /> Novo cliente
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {selectedWithPhoto.length > 0 && (
+            <button
+              className="btn-secondary"
+              style={{ fontSize: 12, padding: "7px 14px" }}
+              onClick={() => downloadPhotosSequentially(selectedWithPhoto)}
+            >
+              <i className="ti ti-download" /> Baixar {selectedWithPhoto.length} foto{selectedWithPhoto.length > 1 ? "s" : ""}
+            </button>
+          )}
+          <button className="btn-primary" onClick={() => setCreating(true)} style={{ fontSize: 12, padding: "7px 14px" }}>
+            <i className="ti ti-plus" /> Novo cliente
+          </button>
+        </div>
       </div>
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
+              <th style={{ width: 32 }}>
+                <input type="checkbox" checked={allWithPhotoSelected} onChange={toggleAll} disabled={withPhoto.length === 0} title="Selecionar todos com foto" />
+              </th>
               <th>Nome</th><th>Cargo</th><th>Empresa</th><th>Cidade</th><th>WhatsApp</th><th>Restrições</th><th>Seguro</th><th>Voo</th><th>Pagamento</th><th>Status</th><th>Foto</th>
             </tr>
           </thead>
           <tbody>
             {list.length === 0 && (
-              <tr><td colSpan={11} style={{ textAlign: "center", color: "var(--text3)", padding: 24 }}>Ainda nenhum participante cadastrado. Adicione o primeiro.</td></tr>
+              <tr><td colSpan={12} style={{ textAlign: "center", color: "var(--text3)", padding: 24 }}>Ainda nenhum participante cadastrado. Adicione o primeiro.</td></tr>
             )}
             {list.map((p) => (
               <tr key={p.id}>
+                <td>
+                  <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} disabled={!p.foto_url} title={p.foto_url ? "Selecionar" : "Sem foto"} />
+                </td>
                 <td><button className="p-link" onClick={() => setOpenId(p.id)}>{p.nome}</button></td>
                 <td>{p.cargo ?? "—"}</td>
                 <td>{p.empresa ?? "—"}</td>
