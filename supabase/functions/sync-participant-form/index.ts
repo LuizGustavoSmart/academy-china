@@ -26,7 +26,8 @@ const PHOTOS_BUCKET = "participant-photos";
 // com a migração aplicada). Criar aqui, com a service_role key, passa pela API de Storage de
 // verdade — que tem a permissão certa — e é idempotente (ignora o erro de "já existe").
 async function ensureBucket(admin: ReturnType<typeof createClient>) {
-  const { error } = await admin.storage.createBucket(PHOTOS_BUCKET, { public: true });
+  // Workspace bloqueia buckets públicos — mantemos privado e servimos por signed URL.
+  const { error } = await admin.storage.createBucket(PHOTOS_BUCKET, { public: false });
   if (error && !/already exists/i.test(error.message)) {
     console.error("[sync-participant-form] falha ao garantir bucket", error);
   }
@@ -50,7 +51,15 @@ async function uploadFoto(admin: ReturnType<typeof createClient>, passaporte: st
     console.error("[sync-participant-form] falha ao subir foto", error);
     return null;
   }
-  return admin.storage.from(PHOTOS_BUCKET).getPublicUrl(path).data.publicUrl;
+  // ~10 anos — bucket é privado, então precisamos de signed URL pra exibir a foto no CRM.
+  const { data: signed, error: signErr } = await admin.storage
+    .from(PHOTOS_BUCKET)
+    .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+  if (signErr) {
+    console.error("[sync-participant-form] falha ao assinar url da foto", signErr);
+    return null;
+  }
+  return signed.signedUrl;
 }
 
 Deno.serve(async (req) => {
