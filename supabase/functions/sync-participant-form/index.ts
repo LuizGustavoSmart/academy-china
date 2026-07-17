@@ -135,6 +135,8 @@ Deno.serve(async (req) => {
   const fields: Record<string, unknown> = {
     nome,
     nome_completo: nome,
+    email: str(payload.email),
+    telefone: str(payload.telefone),
     cargo: str(payload.cargo),
     empresa: str(payload.empresaNome),
     empresa_perfil: str(payload.empresaPerfil),
