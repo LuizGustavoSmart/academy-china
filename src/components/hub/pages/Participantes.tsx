@@ -255,7 +255,7 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
         <div className="panel">
           <div className="panel-header"><i className="ti ti-briefcase" /> Perfil profissional (formulário)</div>
           <div className="panel-body">
-            <ProfileTable rows={[["Perfil da empresa","empresa_perfil"],["Áreas de interesse","areas_interesse"],["Site","empresa_site"]]} participant={p} onSave={save} />
+            <ProfileTable rows={[["Empresa","empresa"],["Cargo","cargo"],["Perfil da empresa","empresa_perfil"],["Áreas de interesse","areas_interesse"],["Site","empresa_site"]]} participant={p} onSave={save} />
           </div>
         </div>
         <div className="panel">
@@ -330,6 +330,8 @@ function ProfileTable({ rows, participant, onSave }: { rows: [string, keyof Part
 }
 
 const VOO_LABELS: Record<string, string> = {
+  comprada: "Passagem já comprada?",
+  empresa_compra: "Empresa/agência da compra",
   cia: "Companhia aérea",
   numero: "Número do voo",
   classe: "Classe",
@@ -341,7 +343,7 @@ const VOO_LABELS: Record<string, string> = {
   chegada: "Chegada",
   terminal: "Terminal",
 };
-const VOO_ORDER = ["cia", "numero", "classe", "origem", "conexoes", "destino", "data_embarque", "partida", "chegada", "terminal"];
+const VOO_ORDER = ["comprada", "empresa_compra", "cia", "numero", "classe", "origem", "conexoes", "destino", "data_embarque", "partida", "chegada", "terminal"];
 
 /** Somente leitura: dados do voo respondidos no formulário (jsonb), sem os campos editáveis do CRM. */
 function VooDetalhesTable({ detalhes }: { detalhes: Record<string, unknown> }) {
@@ -351,7 +353,7 @@ function VooDetalhesTable({ detalhes }: { detalhes: Record<string, unknown> }) {
         {VOO_ORDER.filter((k) => detalhes[k]).map((k) => (
           <tr key={k}>
             <td style={{ color: "var(--text3)", padding: "6px 0", width: "42%" }}>{VOO_LABELS[k]}</td>
-            <td style={{ padding: "6px 0" }}>{String(detalhes[k])}</td>
+            <td style={{ padding: "6px 0" }}>{k === "comprada" ? (detalhes[k] === "sim" ? "Sim" : "Não") : String(detalhes[k])}</td>
           </tr>
         ))}
       </tbody>

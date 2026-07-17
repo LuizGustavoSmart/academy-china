@@ -97,21 +97,28 @@ Deno.serve(async (req) => {
   const alergiaAlimentar = payload.alergiaAlimentar === "sim" ? str(payload.alergiaAlimentarDetalhe) : null;
   const alergiaMedicamento = payload.alergiaMedicamento === "sim" ? str(payload.alergiaMedicamentoDetalhe) : null;
 
-  const vooDetalhes =
-    payload.passagemComprada === "sim"
-      ? {
-          cia: str(payload.vooCia),
-          numero: str(payload.vooNumero),
-          classe: str(payload.vooClasse),
-          origem: str(payload.vooOrigem),
-          conexoes: str(payload.vooConexoes),
-          destino: str(payload.vooDestino),
-          data_embarque: str(payload.vooDataEmbarque),
-          partida: str(payload.vooPartida),
-          chegada: str(payload.vooChegada),
-          terminal: str(payload.vooTerminal),
-        }
-      : null;
+  // Guarda mesmo quando a resposta é "não comprou ainda" — senão o painel de voo simplesmente
+  // não aparece pra quem respondeu isso, dando a impressão de que a etapa não foi respondida.
+  const vooDetalhes = payload.passagemComprada
+    ? {
+        comprada: str(payload.passagemComprada),
+        ...(payload.passagemComprada === "sim"
+          ? {
+              empresa_compra: str(payload.vooEmpresaCompra),
+              cia: str(payload.vooCia),
+              numero: str(payload.vooNumero),
+              classe: str(payload.vooClasse),
+              origem: str(payload.vooOrigem),
+              conexoes: str(payload.vooConexoes),
+              destino: str(payload.vooDestino),
+              data_embarque: str(payload.vooDataEmbarque),
+              partida: str(payload.vooPartida),
+              chegada: str(payload.vooChegada),
+              terminal: str(payload.vooTerminal),
+            }
+          : {}),
+      }
+    : null;
 
   const foto_url = await uploadFoto(admin, passaporte, body.foto_data_url);
 
