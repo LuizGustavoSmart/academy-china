@@ -286,6 +286,13 @@ src="https://www.facebook.com/tr?id=489978770713711&ev=PageView&noscript=1"
   }
   /* [data-reveal] elements are visible by default (no CSS hiding). Reveal-on-scroll is a
      pure JS Web Animations enhancement in the logic class — it never blocks first paint. */
+
+/* --- roteiro toggle (dia a dia detalhado) --- */
+.city-roteiro-head{display:flex;flex-direction:column;gap:8px;}
+.city-roteiro-toggle{align-self:flex-start;margin-top:10px;display:inline-flex;align-items:center;gap:8px;background:transparent;border:1px solid rgba(227,6,19,.55);color:#E30613;font-family:'Barlow',sans-serif;font-size:11.5px;letter-spacing:.28em;text-transform:uppercase;font-weight:600;padding:9px 14px;cursor:pointer;transition:background .25s ease,color .25s ease,border-color .25s ease;}
+.city-roteiro-toggle:hover{background:#E30613;color:#fff;}
+.city-roteiro-grid .d-desc{max-height:0;opacity:0;overflow:hidden;margin:0;transition:max-height .45s ease,opacity .3s ease,margin-top .3s ease;}
+.city-roteiro-grid.detalhes-abertos .d-desc{max-height:600px;opacity:1;margin-top:6px;}
 </style>
 
 </head>
@@ -431,6 +438,66 @@ src="https://www.facebook.com/tr?id=489978770713711&ev=PageView&noscript=1"
         <div class="cta-inline-wrap" data-reveal="" data-reveal-delay="2">
           <a href="#topo" class="cta-inline">Quero participar →</a>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CURADORIA ============ -->
+  <section id="curadoria" style="scroll-margin-top:88px;background:#F4F1EC;color:#17171a;">
+    <!-- SCENE 1 · intro: "Curadoria" hero → label, then "Não existe uma agenda padrão." hero → h2, then rest reveals -->
+    <div id="cur1-track" style="position:relative;height:225vh;">
+      <div id="cur1-stage" style="position:sticky;top:0;height:100vh;overflow:hidden;">
+        <div style="max-width:1220px;margin:0 auto;height:100%;box-sizing:border-box;padding:clamp(96px,13vh,168px) clamp(18px,4vw,48px) 0;position:relative;">
+          <div style="display:flex;align-items:center;gap:11px;margin-bottom:22px;">
+            <span id="cur-dash" style="width:26px;height:2px;background:#E30613;"></span>
+            <span id="cur-curadoria" style="display:inline-block;font-family:'Barlow',sans-serif;font-size:12.5px;letter-spacing:.34em;text-transform:uppercase;color:#E30613;font-weight:600;will-change:opacity,transform;">Curadoria</span>
+          </div>
+          <h2 style="max-width:900px;margin:0 0 16px;font-family:'Oswald',sans-serif;font-weight:600;font-size:clamp(30px,4.6vw,58px);line-height:1.04;text-transform:uppercase;">
+            <span id="cur-frase1" style="display:inline-block;will-change:opacity,transform;">Não existe uma agenda padrão.</span>
+            <span id="cur-frase2" style="display:inline;color:#E30613;will-change:opacity,transform;">A agenda é desenhada conforme o grupo.</span>
+          </h2>
+          <p id="cur-desc" style="max-width:760px;margin:0 0 20px;font-size:18px;line-height:1.6;color:#6e6a63;will-change:opacity,transform;">A curadoria é construída a partir de quem está no grupo — o setor, o momento do negócio, os desafios e as perguntas de cada participante. Empresas, institutos e interlocutores são selecionados para que cada visita faça sentido estratégico para quem está na sala.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCENE 2 · "As mentes por trás da imersão" — 3 pessoas, fluxo normal + reveal simples -->
+    <div class="cur2-section">
+      <div class="cur-kicker2" data-reveal="">As mentes por trás da imersão</div>
+      <div class="cur-people-grid">
+        <div class="cur-person" data-reveal="">
+          <div class="cur-person-photo"><img src="/assets-academy/img-07.jpg" alt="José Ricardo dos Santos Luz Jr." style="object-position:center 35%;"></div>
+          <h3 class="cur-person-name">José Ricardo dos Santos Luz Jr.</h3>
+          <p class="cur-person-title">Co-Chairman &amp; CEO · LIDE China</p>
+          <div class="cur-person-bio">
+            <p>Referência em relações Brasil–China, com mais de 20 anos de experiência em direito, relações governamentais e projetos internacionais de investimento e expansão empresarial.</p>
+            <p>Advogado e empresário, viveu cinco anos na China e é MBA pela Universidade de Pequim.</p>
+            <p>Conselheiro estratégico do Laboratório dos BRICS (BPIC), pesquisador do GEBRICS/USP e membro das Comissões de Comércio Exterior e de Direito Internacional da OAB/SP.</p>
+          </div>
+        </div>
+        <div class="cur-person" data-reveal="" data-reveal-delay="1">
+          <div class="cur-person-photo"><img src="/assets-academy/curadoria-roque-almeida.jpg" alt="Roque Almeida" style="object-position:center 54%;"></div>
+          <h3 class="cur-person-name">Roque Almeida</h3>
+          <p class="cur-person-title">CEO &amp; Founder · Grupo Matter&amp;Co.</p>
+          <div class="cur-person-bio">
+            <p>Referência em estratégia empresarial e inovação, com quase 30 anos de experiência em gestão, transformação organizacional e desenvolvimento de negócios.</p>
+            <p>CEO e fundador do Grupo Matter&amp;Co., ecossistema de inteligência de negócios que integra consultoria, tecnologia e educação.</p>
+            <p>Graduação pela UFMG, com especializações pela Fundação Dom Cabral e IETEC, além de certificação pela University of British Columbia (UBC). Liderou mais de 800 projetos de estratégia e crescimento empresarial.</p>
+          </div>
+        </div>
+        <div class="cur-person" data-reveal="" data-reveal-delay="2">
+          <div class="cur-person-photo"><img src="/assets-academy/curadoria-rodrigo-moreira.jpg" alt="Rodrigo Moreira"></div>
+          <h3 class="cur-person-name">Rodrigo Moreira</h3>
+          <p class="cur-person-title">Co-Founder &amp; Managing Partner · Hiker Ventures</p>
+          <div class="cur-person-bio">
+            <p>Especialista em inovação corporativa e venture building, conectando empresas aos principais ecossistemas globais de tecnologia e startups.</p>
+            <p>Co-Founder &amp; Managing Partner da Hiker Ventures, liderando iniciativas de inovação aberta, corporate venture capital e desenvolvimento de novos negócios.</p>
+            <p>Atua na liderança de missões internacionais e programas de inovação, aproximando executivos dos principais polos mundiais de empreendedorismo e tecnologia.</p>
+          </div>
+        </div>
+      </div>
+      <div id="cur-cta" class="cta-inline-wrap" data-reveal="" data-reveal-delay="3">
+        <a href="#topo" class="cta-inline">Quero participar →</a>
       </div>
     </div>
   </section>
@@ -626,6 +693,7 @@ src="https://www.facebook.com/tr?id=489978770713711&ev=PageView&noscript=1"
               <div class="city-roteiro-head">
                 <h4 class="city-roteiro-h" data-reveal="">Roteiro<small>· Pequim · dia a dia</small></h4>
                 <p class="city-roteiro-sub" data-reveal="">Quatro dias pra calibrar a régua.</p>
+              <button type="button" class="city-roteiro-toggle" aria-expanded="false">Ver dia a dia detalhado ▾</button>
               </div>
               <div>
               <ul class="city-days">
@@ -696,6 +764,7 @@ src="https://www.facebook.com/tr?id=489978770713711&ev=PageView&noscript=1"
               <div class="city-roteiro-head">
                 <h4 class="city-roteiro-h" data-reveal="">Roteiro<small>· Xangai · dia a dia</small></h4>
                 <p class="city-roteiro-sub" data-reveal="">Três dias na velocidade de Xangai.</p>
+              <button type="button" class="city-roteiro-toggle" aria-expanded="false">Ver dia a dia detalhado ▾</button>
               </div>
               <div>
               <ul class="city-days">
@@ -761,6 +830,7 @@ src="https://www.facebook.com/tr?id=489978770713711&ev=PageView&noscript=1"
               <div class="city-roteiro-head">
                 <h4 class="city-roteiro-h" data-reveal="">Roteiro<small>· Hangzhou · dia a dia</small></h4>
                 <p class="city-roteiro-sub" data-reveal="">O fecho — e o dia mais denso da missão.</p>
+              <button type="button" class="city-roteiro-toggle" aria-expanded="false">Ver dia a dia detalhado ▾</button>
               </div>
               <div>
               <ul class="city-days">
@@ -934,66 +1004,6 @@ src="https://www.facebook.com/tr?id=489978770713711&ev=PageView&noscript=1"
       </div>
     </div>
 
-  </section>
-
-  <!-- ============ CURADORIA ============ -->
-  <section id="curadoria" style="scroll-margin-top:88px;background:#F4F1EC;color:#17171a;">
-    <!-- SCENE 1 · intro: "Curadoria" hero → label, then "Não existe uma agenda padrão." hero → h2, then rest reveals -->
-    <div id="cur1-track" style="position:relative;height:225vh;">
-      <div id="cur1-stage" style="position:sticky;top:0;height:100vh;overflow:hidden;">
-        <div style="max-width:1220px;margin:0 auto;height:100%;box-sizing:border-box;padding:clamp(96px,13vh,168px) clamp(18px,4vw,48px) 0;position:relative;">
-          <div style="display:flex;align-items:center;gap:11px;margin-bottom:22px;">
-            <span id="cur-dash" style="width:26px;height:2px;background:#E30613;"></span>
-            <span id="cur-curadoria" style="display:inline-block;font-family:'Barlow',sans-serif;font-size:12.5px;letter-spacing:.34em;text-transform:uppercase;color:#E30613;font-weight:600;will-change:opacity,transform;">Curadoria</span>
-          </div>
-          <h2 style="max-width:900px;margin:0 0 16px;font-family:'Oswald',sans-serif;font-weight:600;font-size:clamp(30px,4.6vw,58px);line-height:1.04;text-transform:uppercase;">
-            <span id="cur-frase1" style="display:inline-block;will-change:opacity,transform;">Não existe uma agenda padrão.</span>
-            <span id="cur-frase2" style="display:inline;color:#E30613;will-change:opacity,transform;">A agenda é desenhada conforme o grupo.</span>
-          </h2>
-          <p id="cur-desc" style="max-width:760px;margin:0 0 20px;font-size:18px;line-height:1.6;color:#6e6a63;will-change:opacity,transform;">A curadoria é construída a partir de quem está no grupo — o setor, o momento do negócio, os desafios e as perguntas de cada participante. Empresas, institutos e interlocutores são selecionados para que cada visita faça sentido estratégico para quem está na sala.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- SCENE 2 · "As mentes por trás da imersão" — 3 pessoas, fluxo normal + reveal simples -->
-    <div class="cur2-section">
-      <div class="cur-kicker2" data-reveal="">As mentes por trás da imersão</div>
-      <div class="cur-people-grid">
-        <div class="cur-person" data-reveal="">
-          <div class="cur-person-photo"><img src="/assets-academy/img-07.jpg" alt="José Ricardo dos Santos Luz Jr." style="object-position:center 35%;"></div>
-          <h3 class="cur-person-name">José Ricardo dos Santos Luz Jr.</h3>
-          <p class="cur-person-title">Co-Chairman &amp; CEO · LIDE China</p>
-          <div class="cur-person-bio">
-            <p>Referência em relações Brasil–China, com mais de 20 anos de experiência em direito, relações governamentais e projetos internacionais de investimento e expansão empresarial.</p>
-            <p>Advogado e empresário, viveu cinco anos na China e é MBA pela Universidade de Pequim.</p>
-            <p>Conselheiro estratégico do Laboratório dos BRICS (BPIC), pesquisador do GEBRICS/USP e membro das Comissões de Comércio Exterior e de Direito Internacional da OAB/SP.</p>
-          </div>
-        </div>
-        <div class="cur-person" data-reveal="" data-reveal-delay="1">
-          <div class="cur-person-photo"><img src="/assets-academy/curadoria-roque-almeida.jpg" alt="Roque Almeida" style="object-position:center 54%;"></div>
-          <h3 class="cur-person-name">Roque Almeida</h3>
-          <p class="cur-person-title">CEO &amp; Founder · Grupo Matter&amp;Co.</p>
-          <div class="cur-person-bio">
-            <p>Referência em estratégia empresarial e inovação, com quase 30 anos de experiência em gestão, transformação organizacional e desenvolvimento de negócios.</p>
-            <p>CEO e fundador do Grupo Matter&amp;Co., ecossistema de inteligência de negócios que integra consultoria, tecnologia e educação.</p>
-            <p>Graduação pela UFMG, com especializações pela Fundação Dom Cabral e IETEC, além de certificação pela University of British Columbia (UBC). Liderou mais de 800 projetos de estratégia e crescimento empresarial.</p>
-          </div>
-        </div>
-        <div class="cur-person" data-reveal="" data-reveal-delay="2">
-          <div class="cur-person-photo"><img src="/assets-academy/curadoria-rodrigo-moreira.jpg" alt="Rodrigo Moreira"></div>
-          <h3 class="cur-person-name">Rodrigo Moreira</h3>
-          <p class="cur-person-title">Co-Founder &amp; Managing Partner · Hiker Ventures</p>
-          <div class="cur-person-bio">
-            <p>Especialista em inovação corporativa e venture building, conectando empresas aos principais ecossistemas globais de tecnologia e startups.</p>
-            <p>Co-Founder &amp; Managing Partner da Hiker Ventures, liderando iniciativas de inovação aberta, corporate venture capital e desenvolvimento de novos negócios.</p>
-            <p>Atua na liderança de missões internacionais e programas de inovação, aproximando executivos dos principais polos mundiais de empreendedorismo e tecnologia.</p>
-          </div>
-        </div>
-      </div>
-      <div id="cur-cta" class="cta-inline-wrap" data-reveal="" data-reveal-delay="3">
-        <a href="#topo" class="cta-inline">Quero participar →</a>
-      </div>
-    </div>
   </section>
 
   <!-- ============ JORNADA (6 dimensões + participante sai com) ============ -->
@@ -2299,6 +2309,20 @@ src="https://www.facebook.com/tr?id=489978770713711&ev=PageView&noscript=1"
     var f2 = document.getElementById('contact-form');
     if(f1) handle(f1, 'hero');
     if(f2) handle(f2, 'contato');
+  });
+})();
+</script>
+
+<script>
+(function(){
+  document.querySelectorAll('.city-roteiro-toggle').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var grid = btn.closest('.city-roteiro-grid');
+      if(!grid) return;
+      var open = grid.classList.toggle('detalhes-abertos');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.textContent = open ? 'Recolher ▴' : 'Ver dia a dia detalhado ▾';
+    });
   });
 })();
 </script>
