@@ -80,8 +80,8 @@ src="https://www.facebook.com/tr?id=489978770713711&ev=PageView&noscript=1"
   .city-day .d-title{margin:0 0 6px;font-family:'Oswald',sans-serif;font-weight:600;font-size:clamp(16px,1.8vw,19px);text-transform:uppercase;line-height:1.15;color:#fff}
   .city-day .d-desc{margin:0;font-family:'Barlow',sans-serif;font-size:14.5px;line-height:1.55;color:rgba(244,241,236,.8);font-weight:300}
   /* ===== timeline horizontal do roteiro ===== */
-  .city-days{flex-direction:row;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;gap:1px}
-  .city-days .city-day{min-width:280px;flex:0 0 280px;scroll-snap-align:start;grid-template-columns:1fr;row-gap:10px}
+  .city-days{flex-direction:row;gap:1px}
+  .city-days .city-day{flex:1 1 0;min-width:0;grid-template-columns:1fr;row-gap:10px}
   .city-days .city-day .d-when{flex-direction:row;align-items:baseline;gap:8px}
   @media (max-width:820px){
     .city-roteiro-grid{grid-template-columns:1fr;gap:22px}
