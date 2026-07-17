@@ -208,17 +208,19 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
             <span className={`badge ${p.voo_ida_status === "confirmado" ? "badge-ok" : "badge-warn"}`}>Voo {p.voo_ida_status === "confirmado" ? "confirmado" : "pendente"}</span>
           </div>
         </div>
-        {p.foto_url && (
+        {p.foto_url ? (
           // O `download` do HTML não força nada em recurso de outra origem (o storage do
           // Supabase é outro domínio) — por isso o parâmetro `?download`, que o Supabase
           // Storage entende nativamente e responde com Content-Disposition: attachment.
           <a
             className="btn-secondary"
             href={`${p.foto_url}${p.foto_url.includes("?") ? "&" : "?"}download=${encodeURIComponent(`${p.nome.replace(/\s+/g, "_")}.jpg`)}`}
-            style={{ fontSize: 12, padding: "7px 14px", flexShrink: 0 }}
+            style={{ fontSize: 12, padding: "7px 14px", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6 }}
           >
             <i className="ti ti-download" /> Baixar foto
           </a>
+        ) : (
+          <span style={{ fontSize: 11, color: "var(--text3)", flexShrink: 0 }}>Nenhuma foto enviada no formulário</span>
         )}
       </div>
       <div className="two-col">

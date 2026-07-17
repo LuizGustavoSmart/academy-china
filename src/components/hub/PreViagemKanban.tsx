@@ -3,7 +3,7 @@ import {
   DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable,
   useSensor, useSensors, type DragEndEvent, type DragStartEvent,
 } from "@dnd-kit/core";
-import { useParticipants, useTouchpoints, useUpsertTouchpoints, type Participant, type Touchpoint } from "@/lib/hub-api";
+import { useParticipants, useTouchpoints, useUpsertTouchpoints, useUpdateParticipant, type Participant, type Touchpoint } from "@/lib/hub-api";
 
 // ────────── CONSTANTES DA JORNADA ──────────
 export const TPS = ["D-60", "D-45", "D-30", "D-21", "D-14", "D-7", "D-3"];
@@ -84,6 +84,7 @@ export function PreViagemKanban({ onViewParticipant }: { onViewParticipant?: (id
   const { data: allParts = [] } = useParticipants();
   const { data: tps = [] } = useTouchpoints();
   const upsertMany = useUpsertTouchpoints();
+  const updateParticipant = useUpdateParticipant();
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -97,7 +98,7 @@ export function PreViagemKanban({ onViewParticipant }: { onViewParticipant?: (id
     setActiveId(null);
     const pid = String(e.active.id);
     const part = parts.find((p) => p.id === pid);
-    if (!part || !isJourneyReady(part)) return; // "Entrada" só sai quando contrato + pagamento forem confirmados no cadastro
+    if (!part) return;
     if (e.over?.id == null) return;
     const target = COLS.indexOf(String(e.over.id));
     if (target <= 0 || target === getStageIndex(tpMap, part)) return; // não é possível arrastar de volta para "Entrada"
@@ -107,6 +108,10 @@ export function PreViagemKanban({ onViewParticipant }: { onViewParticipant?: (id
       .map((code, i) => ({ participant_id: pid, touchpoint_code: code, status: i < tpTarget ? "realizado" : "nao_iniciado" }))
       .filter((t) => getStatus(tpMap, pid, t.touchpoint_code) !== t.status);
     if (patches.length) upsertMany.mutate(patches);
+    // Sair de "Entrada" pra jornada de touchpoints confirma contrato + pagamento automaticamente.
+    if (!isJourneyReady(part)) {
+      updateParticipant.mutate({ id: pid, patch: { pagamento_status: "confirmado", contrato_status: "assinado" } });
+    }
   };
 
   const totalOverdue = parts.reduce((acc, p) => acc + countOverdue(tpMap, p.id), 0);
@@ -190,7 +195,11 @@ function CardInner({ p, tpMap, overlay, onView }: { p: Participant; tpMap: TpMap
   const body = (
     <>
       <div className="pv-card-head">
-        <span className="pv-avatar" style={{ background: avatarColor(p.nome) }}>{initials(p.nome)}</span>
+        {p.foto_url ? (
+          <img src={p.foto_url} alt={p.nome} className="pv-avatar" style={{ objectFit: "cover" }} />
+        ) : (
+          <span className="pv-avatar" style={{ background: avatarColor(p.nome) }}>{initials(p.nome)}</span>
+        )}
         <div className="pv-card-id">
           <div className="pv-card-name">
             {onView && !overlay
