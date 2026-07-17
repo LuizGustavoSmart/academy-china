@@ -233,6 +233,7 @@ export type Database = {
       participants: {
         Row: {
           alergias: string | null
+          areas_interesse: string | null
           cargo: string | null
           cidade: string | null
           contato_emergencia: string | null
@@ -241,8 +242,14 @@ export type Database = {
           data_nascimento: string | null
           email: string | null
           empresa: string | null
+          empresa_perfil: string | null
+          empresa_site: string | null
+          form_id: string | null
+          form_synced_at: string | null
+          foto_url: string | null
           id: string
           medicamentos: string | null
+          nacionalidade: string | null
           nome: string
           nome_completo: string | null
           observacoes: string | null
@@ -250,20 +257,27 @@ export type Database = {
           origem: string | null
           pagamento_status: string
           passaporte: string | null
+          passaporte_emissao: string | null
+          passaporte_validade: string | null
           quarto: string | null
           restricoes_alimentares: string | null
           seguro_status: string
           status: string
+          tamanho_blazer: string | null
+          tamanho_camisa: string | null
           telefone: string | null
           tier: string
+          tipo_sanguineo: string | null
           updated_at: string
           uso_imagem_status: string
           valor_pago: number
+          voo_detalhes: Json | null
           voo_ida_status: string
           voo_volta_status: string
         }
         Insert: {
           alergias?: string | null
+          areas_interesse?: string | null
           cargo?: string | null
           cidade?: string | null
           contato_emergencia?: string | null
@@ -272,8 +286,14 @@ export type Database = {
           data_nascimento?: string | null
           email?: string | null
           empresa?: string | null
+          empresa_perfil?: string | null
+          empresa_site?: string | null
+          form_id?: string | null
+          form_synced_at?: string | null
+          foto_url?: string | null
           id?: string
           medicamentos?: string | null
+          nacionalidade?: string | null
           nome: string
           nome_completo?: string | null
           observacoes?: string | null
@@ -281,20 +301,27 @@ export type Database = {
           origem?: string | null
           pagamento_status?: string
           passaporte?: string | null
+          passaporte_emissao?: string | null
+          passaporte_validade?: string | null
           quarto?: string | null
           restricoes_alimentares?: string | null
           seguro_status?: string
           status?: string
+          tamanho_blazer?: string | null
+          tamanho_camisa?: string | null
           telefone?: string | null
           tier?: string
+          tipo_sanguineo?: string | null
           updated_at?: string
           uso_imagem_status?: string
           valor_pago?: number
+          voo_detalhes?: Json | null
           voo_ida_status?: string
           voo_volta_status?: string
         }
         Update: {
           alergias?: string | null
+          areas_interesse?: string | null
           cargo?: string | null
           cidade?: string | null
           contato_emergencia?: string | null
@@ -303,8 +330,14 @@ export type Database = {
           data_nascimento?: string | null
           email?: string | null
           empresa?: string | null
+          empresa_perfil?: string | null
+          empresa_site?: string | null
+          form_id?: string | null
+          form_synced_at?: string | null
+          foto_url?: string | null
           id?: string
           medicamentos?: string | null
+          nacionalidade?: string | null
           nome?: string
           nome_completo?: string | null
           observacoes?: string | null
@@ -312,15 +345,21 @@ export type Database = {
           origem?: string | null
           pagamento_status?: string
           passaporte?: string | null
+          passaporte_emissao?: string | null
+          passaporte_validade?: string | null
           quarto?: string | null
           restricoes_alimentares?: string | null
           seguro_status?: string
           status?: string
+          tamanho_blazer?: string | null
+          tamanho_camisa?: string | null
           telefone?: string | null
           tier?: string
+          tipo_sanguineo?: string | null
           updated_at?: string
           uso_imagem_status?: string
           valor_pago?: number
+          voo_detalhes?: Json | null
           voo_ida_status?: string
           voo_volta_status?: string
         }
