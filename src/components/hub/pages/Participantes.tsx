@@ -26,7 +26,9 @@ function labelStatus(s: string) {
 
 export function ParticipantesPage({ openId, setOpenId }: { openId: string | null; setOpenId: (id: string | null) => void }) {
   const { data: all = [] } = useParticipants();
-  const list = all.filter((p) => p.contrato_status === "assinado");
+  // Conta como participante quem já assinou contrato OU respondeu o formulário público
+  // (mesmo critério da coluna "Entrada" no Kanban de pré-viagem).
+  const list = all.filter((p) => p.contrato_status === "assinado" || p.origem === "formulario");
   const [creating, setCreating] = useState(false);
 
   if (openId) {
@@ -227,9 +229,39 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
         <div className="panel">
           <div className="panel-header"><i className="ti ti-id-badge" /> Dados pessoais</div>
           <div className="panel-body">
-            <ProfileTable rows={[["Nome completo","nome_completo"],["Passaporte","passaporte"],["Data de nascimento","data_nascimento"],["WhatsApp","telefone"],["E-mail","email"],["Cidade / estado","cidade"],["Contato emergência","contato_emergencia"]]} participant={p} onSave={save} />
+            <ProfileTable rows={[["Nome completo","nome_completo"],["Nacionalidade","nacionalidade"],["Data de nascimento","data_nascimento"],["WhatsApp","telefone"],["E-mail","email"],["Cidade / estado","cidade"],["Contato emergência","contato_emergencia"],["Tipo sanguíneo","tipo_sanguineo"]]} participant={p} onSave={save} />
           </div>
         </div>
+        <div className="panel">
+          <div className="panel-header"><i className="ti ti-stamp" /> Passaporte</div>
+          <div className="panel-body">
+            <ProfileTable rows={[["Número","passaporte"],["Emissão","passaporte_emissao"],["Validade","passaporte_validade"]]} participant={p} onSave={save} />
+          </div>
+        </div>
+      </div>
+      <div className="two-col">
+        <div className="panel">
+          <div className="panel-header"><i className="ti ti-briefcase" /> Perfil profissional (formulário)</div>
+          <div className="panel-body">
+            <ProfileTable rows={[["Perfil da empresa","empresa_perfil"],["Áreas de interesse","areas_interesse"],["Site","empresa_site"]]} participant={p} onSave={save} />
+          </div>
+        </div>
+        <div className="panel">
+          <div className="panel-header"><i className="ti ti-shirt" /> Vestuário</div>
+          <div className="panel-body">
+            <ProfileTable rows={[["Tamanho da camisa","tamanho_camisa"],["Tamanho do blazer","tamanho_blazer"]]} participant={p} onSave={save} />
+          </div>
+        </div>
+      </div>
+      {p.voo_detalhes && (
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <div className="panel-header"><i className="ti ti-plane" /> Passagem aérea (respondida no formulário)</div>
+          <div className="panel-body">
+            <VooDetalhesTable detalhes={p.voo_detalhes} />
+          </div>
+        </div>
+      )}
+      <div className="two-col">
         <div className="panel">
           <div className="panel-header"><i className="ti ti-plane" /> Logística</div>
           <div className="panel-body">
@@ -240,8 +272,6 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
             <StatusRow label="Uso de imagem" field="uso_imagem_status" value={p.uso_imagem_status} onSave={save} options={["pendente","assinado"]} />
           </div>
         </div>
-      </div>
-      <div className="two-col">
         <div className="panel">
           <div className="panel-header"><i className="ti ti-cash" /> Financeiro</div>
           <div className="panel-body">
@@ -254,11 +284,11 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
             <StatusRow label="Contrato" field="contrato_status" value={p.contrato_status} onSave={save} options={["pendente","assinado"]} />
           </div>
         </div>
-        <div className="panel">
-          <div className="panel-header"><i className="ti ti-meat" /> Saúde & restrições</div>
-          <div className="panel-body">
-            <ProfileTable rows={[["Restrições alimentares","restricoes_alimentares"],["Alergias","alergias"],["Observações médicas","observacoes_medicas"],["Medicamentos","medicamentos"]]} participant={p} onSave={save} />
-          </div>
+      </div>
+      <div className="panel" style={{ marginBottom: 20 }}>
+        <div className="panel-header"><i className="ti ti-meat" /> Saúde & restrições</div>
+        <div className="panel-body">
+          <ProfileTable rows={[["Restrições alimentares","restricoes_alimentares"],["Alergias","alergias"],["Observações médicas","observacoes_medicas"],["Medicamentos","medicamentos"]]} participant={p} onSave={save} />
         </div>
       </div>
       <div className="panel" style={{ marginBottom: 20 }}>
@@ -280,6 +310,36 @@ function ProfileTable({ rows, participant, onSave }: { rows: [string, keyof Part
           <tr key={field as string}>
             <td style={{ color: "var(--text3)", padding: "6px 0", width: "42%" }}>{label}</td>
             <td style={{ padding: "6px 0" }}><EditableField value={(participant[field] as any) ?? ""} onSave={(v) => onSave({ [field]: v } as any)} /></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+const VOO_LABELS: Record<string, string> = {
+  cia: "Companhia aérea",
+  numero: "Número do voo",
+  classe: "Classe",
+  origem: "Origem",
+  conexoes: "Conexões",
+  destino: "Destino",
+  data_embarque: "Data do embarque",
+  partida: "Partida",
+  chegada: "Chegada",
+  terminal: "Terminal",
+};
+const VOO_ORDER = ["cia", "numero", "classe", "origem", "conexoes", "destino", "data_embarque", "partida", "chegada", "terminal"];
+
+/** Somente leitura: dados do voo respondidos no formulário (jsonb), sem os campos editáveis do CRM. */
+function VooDetalhesTable({ detalhes }: { detalhes: Record<string, unknown> }) {
+  return (
+    <table style={{ width: "100%", fontSize: 12, border: "none", borderCollapse: "collapse" }}>
+      <tbody>
+        {VOO_ORDER.filter((k) => detalhes[k]).map((k) => (
+          <tr key={k}>
+            <td style={{ color: "var(--text3)", padding: "6px 0", width: "42%" }}>{VOO_LABELS[k]}</td>
+            <td style={{ padding: "6px 0" }}>{String(detalhes[k])}</td>
           </tr>
         ))}
       </tbody>
