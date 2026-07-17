@@ -1,1 +1,4 @@
 project_id = "nfiyksiqmjkdnmfhceud"
+
+[functions.sync-participant-form]
+verify_jwt = false

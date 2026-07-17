@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useParticipants, useTouchpoints, useUpsertTouchpoint, type Participant, type Touchpoint } from "@/lib/hub-api";
 import { MensagensAccordion } from "@/components/hub/MensagensAccordion";
 import { PendenciasList } from "@/components/hub/PendenciasList";
+import { PreViagemKanban } from "@/components/hub/PreViagemKanban";
 
 const TPS = ["D-60", "D-45", "D-30", "D-21", "D-14", "D-7", "D-3"];
 const TP_NAMES: Record<string, string> = { "D-60": "Kickoff", "D-45": "Aquecimento", "D-30": "Logística", "D-21": "Dicas", "D-14": "Confirm.", "D-7": "Vídeos", "D-3": "Pré-emb." };
@@ -39,11 +41,34 @@ function getActiveStage(pid: string, tpsList: Touchpoint[]): string | null {
 }
 
 export function PreViagemPage({ sub, onViewParticipant }: { sub: string; onViewParticipant?: (id: string) => void }) {
-  if (sub === "pipeline") return <TouchpointGrid onViewParticipant={onViewParticipant} />;
+  if (sub === "pipeline") return <PipelineView onViewParticipant={onViewParticipant} />;
   if (sub === "parts") return <PartsCompactList onViewParticipant={onViewParticipant} />;
   if (sub === "mensagens") return <MensagensAccordion etapa="preop" intro="Mensagens em ordem cronológica (D-60 → D-3). D-60 e D-3 são obrigatórios e síncronos." />;
   if (sub === "pendencias") return <PendenciasList fase="preop" title="Pendências — fase pré-viagem" />;
   return <PreDash />;
+}
+
+function PipelineView({ onViewParticipant }: { onViewParticipant?: (id: string) => void }) {
+  const [view, setView] = useState<"kanban" | "tabela">("kanban");
+  return (
+    <div style={{ position: "relative" }}>
+      <div style={{ position: "absolute", top: 20, right: 28, zIndex: 5, display: "flex", gap: 2, background: "var(--surface2)", border: ".5px solid var(--border)", borderRadius: 8, padding: 2 }}>
+        {(["kanban", "tabela"] as const).map((v) => (
+          <button key={v} onClick={() => setView(v)}
+            style={{
+              fontSize: 11, fontWeight: 500, padding: "4px 12px", borderRadius: 6, border: "none", cursor: "pointer",
+              background: view === v ? "var(--surface)" : "transparent",
+              color: view === v ? "var(--text)" : "var(--text3)",
+              boxShadow: view === v ? "0 1px 3px rgba(0,0,0,.1)" : "none",
+            }}>
+            <i className={`ti ${v === "kanban" ? "ti-layout-kanban" : "ti-table"}`} style={{ marginRight: 4 }} />
+            {v === "kanban" ? "Kanban" : "Tabela"}
+          </button>
+        ))}
+      </div>
+      {view === "kanban" ? <PreViagemKanban onViewParticipant={onViewParticipant} /> : <TouchpointGrid onViewParticipant={onViewParticipant} />}
+    </div>
+  );
 }
 
 function PreDash() {

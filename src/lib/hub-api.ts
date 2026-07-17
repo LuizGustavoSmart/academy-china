@@ -31,6 +31,20 @@ export type Participant = {
   observacoes: string | null;
   status: string;
   created_at: string;
+  // ─── vindos do formulário público (china.matteracademy.ai/formulario) ───
+  foto_url: string | null;
+  nacionalidade: string | null;
+  tipo_sanguineo: string | null;
+  tamanho_camisa: string | null;
+  tamanho_blazer: string | null;
+  passaporte_emissao: string | null;
+  passaporte_validade: string | null;
+  empresa_perfil: string | null;
+  areas_interesse: string | null;
+  empresa_site: string | null;
+  voo_detalhes: Record<string, unknown> | null;
+  form_id: string | null;
+  form_synced_at: string | null;
 };
 
 export type Lead = {
@@ -240,6 +254,36 @@ export function useUpsertTouchpoint() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_touchpoints"] }),
+  });
+}
+
+// Batch upsert com update otimista — usado pelo kanban de pré-viagem (mover card = várias etapas de uma vez)
+export function useUpsertTouchpoints() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ts: { participant_id: string; touchpoint_code: string; status: string }[]) => {
+      const now = new Date().toISOString();
+      const { error } = await sb
+        .from("touchpoints")
+        .upsert(ts.map((t) => ({ ...t, updated_at: now })), { onConflict: "participant_id,touchpoint_code" });
+      if (error) throw error;
+    },
+    onMutate: async (ts) => {
+      await qc.cancelQueries({ queryKey: ["hub_touchpoints"] });
+      const prev = qc.getQueryData<Touchpoint[]>(["hub_touchpoints"]);
+      qc.setQueryData<Touchpoint[]>(["hub_touchpoints"], (old = []) => {
+        const next = [...old];
+        for (const t of ts) {
+          const i = next.findIndex((x) => x.participant_id === t.participant_id && x.touchpoint_code === t.touchpoint_code);
+          if (i >= 0) next[i] = { ...next[i], status: t.status };
+          else next.push({ id: `tmp-${t.participant_id}-${t.touchpoint_code}`, ...t } as Touchpoint);
+        }
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => { if (ctx?.prev) qc.setQueryData(["hub_touchpoints"], ctx.prev); },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["hub_touchpoints"] }),
   });
 }
 
