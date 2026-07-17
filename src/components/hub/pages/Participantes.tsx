@@ -195,7 +195,11 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
         <button className="btn-danger-outline" onClick={() => setConfirmDel(true)}><i className="ti ti-trash" /> Excluir participante</button>
       </div>
       <div className="participant-header-card">
-        <div className="participant-avatar">{initials}</div>
+        {p.foto_url ? (
+          <img src={p.foto_url} alt={p.nome} className="participant-avatar" style={{ objectFit: "cover" }} />
+        ) : (
+          <div className="participant-avatar">{initials}</div>
+        )}
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 18, fontWeight: 500 }}>{p.nome}</div>
           <div style={{ fontSize: 13, color: "var(--text2)", marginTop: 2 }}>{[p.cargo, p.empresa, p.cidade].filter(Boolean).join(" · ")}</div>
@@ -204,6 +208,18 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
             <span className={`badge ${p.voo_ida_status === "confirmado" ? "badge-ok" : "badge-warn"}`}>Voo {p.voo_ida_status === "confirmado" ? "confirmado" : "pendente"}</span>
           </div>
         </div>
+        {p.foto_url && (
+          // O `download` do HTML não força nada em recurso de outra origem (o storage do
+          // Supabase é outro domínio) — por isso o parâmetro `?download`, que o Supabase
+          // Storage entende nativamente e responde com Content-Disposition: attachment.
+          <a
+            className="btn-secondary"
+            href={`${p.foto_url}${p.foto_url.includes("?") ? "&" : "?"}download=${encodeURIComponent(`${p.nome.replace(/\s+/g, "_")}.jpg`)}`}
+            style={{ fontSize: 12, padding: "7px 14px", flexShrink: 0 }}
+          >
+            <i className="ti ti-download" /> Baixar foto
+          </a>
+        )}
       </div>
       <div className="two-col">
         <div className="panel">
