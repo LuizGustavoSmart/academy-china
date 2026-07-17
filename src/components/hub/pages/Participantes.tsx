@@ -30,7 +30,9 @@ export function ParticipantesPage({ openId, setOpenId }: { openId: string | null
   const [creating, setCreating] = useState(false);
 
   if (openId) {
-    const p = list.find((x) => x.id === openId);
+    // Busca em `all`, não em `list`: participantes recém-criados (ex.: pelo formulário) ainda
+    // sem contrato assinado precisam ser visualizáveis a partir do Kanban/funil.
+    const p = all.find((x) => x.id === openId);
     if (p) return <ProfileView participant={p} onBack={() => setOpenId(null)} />;
   }
 
