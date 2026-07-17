@@ -19,6 +19,19 @@ const str = (v: unknown): string | null => {
   return s || null;
 };
 
+const PHOTOS_BUCKET = "participant-photos";
+
+// A migração cria o bucket via INSERT direto em storage.buckets, mas a role que aplica
+// migrations no Lovable Cloud nem sempre tem permissão pra isso ("Bucket not found" mesmo
+// com a migração aplicada). Criar aqui, com a service_role key, passa pela API de Storage de
+// verdade — que tem a permissão certa — e é idempotente (ignora o erro de "já existe").
+async function ensureBucket(admin: ReturnType<typeof createClient>) {
+  const { error } = await admin.storage.createBucket(PHOTOS_BUCKET, { public: true });
+  if (error && !/already exists/i.test(error.message)) {
+    console.error("[sync-participant-form] falha ao garantir bucket", error);
+  }
+}
+
 async function uploadFoto(admin: ReturnType<typeof createClient>, passaporte: string, fotoDataUrl: string | null | undefined) {
   if (!fotoDataUrl) return null;
   const match = /^data:(image\/\w+);base64,(.+)$/.exec(fotoDataUrl);
@@ -28,7 +41,8 @@ async function uploadFoto(admin: ReturnType<typeof createClient>, passaporte: st
   const path = `${passaporte}.${ext}`;
   const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 
-  const { error } = await admin.storage.from("participant-photos").upload(path, bytes, {
+  await ensureBucket(admin);
+  const { error } = await admin.storage.from(PHOTOS_BUCKET).upload(path, bytes, {
     contentType: mime,
     upsert: true,
   });
@@ -36,7 +50,7 @@ async function uploadFoto(admin: ReturnType<typeof createClient>, passaporte: st
     console.error("[sync-participant-form] falha ao subir foto", error);
     return null;
   }
-  return admin.storage.from("participant-photos").getPublicUrl(path).data.publicUrl;
+  return admin.storage.from(PHOTOS_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
 Deno.serve(async (req) => {
