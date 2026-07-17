@@ -24,6 +24,14 @@ function labelStatus(s: string) {
   return ({ confirmado: "Confirmado", pendente: "Pendente", em_andamento: "Em andamento", contratado: "Contratado" } as any)[s] ?? s;
 }
 
+// O `download` do HTML não força nada em recurso de outra origem (o storage do Supabase é
+// outro domínio) — por isso o parâmetro `?download`, que o Supabase Storage entende
+// nativamente (em URL pública ou assinada) e responde com Content-Disposition: attachment.
+function photoDownloadUrl(p: Participant): string {
+  const filename = encodeURIComponent(`${p.nome.replace(/\s+/g, "_")}.jpg`);
+  return `${p.foto_url}${p.foto_url!.includes("?") ? "&" : "?"}download=${filename}`;
+}
+
 export function ParticipantesPage({ openId, setOpenId }: { openId: string | null; setOpenId: (id: string | null) => void }) {
   const { data: all = [] } = useParticipants();
   // Conta como participante quem já assinou contrato OU respondeu o formulário público
@@ -50,12 +58,12 @@ export function ParticipantesPage({ openId, setOpenId }: { openId: string | null
         <table>
           <thead>
             <tr>
-              <th>Nome</th><th>Cargo</th><th>Empresa</th><th>Cidade</th><th>WhatsApp</th><th>Restrições</th><th>Seguro</th><th>Voo</th><th>Pagamento</th><th>Status</th>
+              <th>Nome</th><th>Cargo</th><th>Empresa</th><th>Cidade</th><th>WhatsApp</th><th>Restrições</th><th>Seguro</th><th>Voo</th><th>Pagamento</th><th>Status</th><th>Foto</th>
             </tr>
           </thead>
           <tbody>
             {list.length === 0 && (
-              <tr><td colSpan={10} style={{ textAlign: "center", color: "var(--text3)", padding: 24 }}>Ainda nenhum participante cadastrado. Adicione o primeiro.</td></tr>
+              <tr><td colSpan={11} style={{ textAlign: "center", color: "var(--text3)", padding: 24 }}>Ainda nenhum participante cadastrado. Adicione o primeiro.</td></tr>
             )}
             {list.map((p) => (
               <tr key={p.id}>
@@ -69,6 +77,13 @@ export function ParticipantesPage({ openId, setOpenId }: { openId: string | null
                 <td>{statusBadge(p.voo_ida_status)}</td>
                 <td>{statusBadge(p.pagamento_status)}</td>
                 <td>{statusBadge(p.status)}</td>
+                <td>
+                  {p.foto_url ? (
+                    <a className="p-link" href={photoDownloadUrl(p)} title="Baixar foto"><i className="ti ti-download" /> Baixar</a>
+                  ) : (
+                    <span style={{ color: "var(--text3)" }}>—</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -211,12 +226,9 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
           </div>
         </div>
         {p.foto_url ? (
-          // O `download` do HTML não força nada em recurso de outra origem (o storage do
-          // Supabase é outro domínio) — por isso o parâmetro `?download`, que o Supabase
-          // Storage entende nativamente e responde com Content-Disposition: attachment.
           <a
             className="btn-secondary"
-            href={`${p.foto_url}${p.foto_url.includes("?") ? "&" : "?"}download=${encodeURIComponent(`${p.nome.replace(/\s+/g, "_")}.jpg`)}`}
+            href={photoDownloadUrl(p)}
             style={{ fontSize: 12, padding: "7px 14px", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6 }}
           >
             <i className="ti ti-download" /> Baixar foto
