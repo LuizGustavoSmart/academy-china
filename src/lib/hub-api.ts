@@ -408,6 +408,20 @@ export function useSetLeadResponsaveis() {
         await saveLegacy();
         return;
       }
+      // A troca inteira acontece no banco em uma única transação. Antes, o
+      // cliente apagava os vínculos e só então inseria os novos: uma falha no
+      // meio do processo fazia a tela parecer salva, mas o lead ficava sem os
+      // responsáveis (ou voltava ao estado anterior ao recarregar).
+      const { error: replaceError } = await sb.rpc("replace_lead_responsaveis", {
+        p_lead_id: leadId,
+        p_responsavel_ids: [...new Set(responsavelIds)],
+      });
+      if (!replaceError) return;
+      if (!isMissingCommercialTable(replaceError) && replaceError?.code !== "PGRST202") throw replaceError;
+
+      // Compatibilidade temporária para ambientes nos quais a migration da
+      // função ainda não chegou. O caminho abaixo preserva o comportamento
+      // anterior, mas os ambientes atualizados sempre usam a operação atômica.
       const { error: delErr } = await sb.from("lead_responsaveis").delete().eq("lead_id", leadId);
       if (delErr && isMissingCommercialTable(delErr)) {
         await saveLegacy();
