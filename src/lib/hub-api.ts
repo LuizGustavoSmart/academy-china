@@ -426,6 +426,9 @@ export function useCreateLeadActivity() {
       const { data, error } = await sb.from("lead_activities").insert(a).select().single();
       if (error && isMissingCommercialTable(error)) return null;
       if (error) throw error;
+      // Espelha cada nova atividade para os participantes do mesmo contato.
+      // A falha no espelho não pode desfazer a nota já gravada no Comercial.
+      await mirrorLeadActivityToParticipants(a.lead_id, data as LeadActivity);
       return data as LeadActivity;
     },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["hub_lead_activities", v.lead_id] }),
@@ -775,6 +778,24 @@ export async function copyLeadHistoryToParticipant(leadId: string, participantId
   const { error: insertError } = await sb.from("participant_activities").insert(rows);
   if (insertError && isMissingCommercialTable(insertError)) return;
   if (insertError) throw insertError;
+}
+
+async function mirrorLeadActivityToParticipants(leadId: string, activity: LeadActivity) {
+  const { data: lead, error: leadError } = await sb.from("leads_crm").select("nome").eq("id", leadId).maybeSingle();
+  if (leadError || !lead?.nome) return;
+  const { data: participants, error: participantsError } = await sb.from("participants").select("id").eq("nome", lead.nome);
+  if (participantsError || !participants?.length) return;
+  const rows = participants.map((participant: Pick<Participant, "id">) => ({
+    participant_id: participant.id,
+    conteudo: activity.conteudo,
+    autor: activity.autor,
+    tipo: activity.tipo,
+    created_at: activity.created_at,
+  }));
+  const { error } = await sb.from("participant_activities").insert(rows);
+  // Em instalações antigas, a migration pode ainda não ter criado a tabela;
+  // a timeline vinculada continua exibindo a nota comercial nesse intervalo.
+  if (error && !isMissingCommercialTable(error)) return;
 }
 /** Regra única do funil: apenas P7 pode carregar o status Confirmado.
  * Ao confirmar, o lead vai para P7; ao retornar de P7, deixa de ser confirmado. */
