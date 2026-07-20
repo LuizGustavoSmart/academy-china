@@ -68,7 +68,7 @@ function ComercialDash() {
   const pendOpen = pendencias.filter((p) => p.fase === "comercial" && p.status !== "resolvida").length;
   return (
     <div className="main">
-      <div className="metrics">
+      <div className="metrics" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))" }}>
         <Metric icon="ti-users" label="Leads ativos" value={String(ativos.length)} sub="ainda no funil comercial" />
         <Metric icon="ti-check" label="Confirmados" value={String(confirmados)} sub="leads e participantes, sem duplicar" cls="metric-ok" />
         <Metric icon="ti-trending-up" label="Em negociação" value={String(emNegociacao)} sub="etapa Negociação" cls="metric-warn" />
