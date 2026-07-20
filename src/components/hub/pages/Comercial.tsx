@@ -279,7 +279,7 @@ function PassoInlineSelect({ lead, hasParticipant, onPromotionRequired }: { lead
         <i className={`ti ti-chevron-${open ? "up" : "down"}`} style={{ fontSize: 13 }} />
       </button>
       {open && <div role="listbox" style={{ position: "absolute", zIndex: 30, top: "calc(100% + 6px)", left: 0, minWidth: 184, padding: 5, border: "1px solid var(--border)", borderRadius: 10, background: "var(--surface, #fff)", boxShadow: "0 12px 28px rgba(20,30,45,.18)" }}>
-        {[...options, DECLINADO_COL].map((stage) => {
+        {[DECLINADO_COL, ...options].map((stage) => {
           const stageColor = COL_COLOR[stage] ?? "var(--text2)";
           const active = stage === selected;
           return <button key={stage} type="button" role="option" aria-selected={active} onClick={() => choose(stage)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "8px 9px", border: 0, borderRadius: 7, background: active ? `${stageColor}18` : "transparent", color: stageColor, fontSize: 11, fontWeight: active ? 700 : 500, textAlign: "left", cursor: "pointer" }}>
