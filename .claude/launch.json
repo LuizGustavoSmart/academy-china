@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "crm-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 8080,
+      "autoPort": true
+    },
+    {
+      "name": "forms-dev",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-Command", "Set-Location 'C:/Users/MarcosMoreira-Matter/Desktop/MATTER ACADEMY - FORMS CHINA'; npm.cmd run dev -- --port $env:PORT --strictPort --host"],
+      "port": 8080,
+      "autoPort": true
+    }
+  ]
+}

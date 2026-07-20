@@ -1,10 +1,15 @@
 // Recebe a ficha enviada em china.matteracademy.ai/formulario (outro projeto Supabase) e
-// cria/atualiza o participante correspondente em `participants`. Roda como Edge Function no
-// próprio projeto do CRM para poder usar a service_role key injetada automaticamente pelo
-// runtime (SUPABASE_SERVICE_ROLE_KEY) — assim nenhuma chave privilegiada precisa ser copiada
-// para fora do Lovable Cloud. Autenticação simples por chave compartilhada (mesmo padrão do
-// x-admin-key usado no app do formulário), já que quem chama é o server do outro app, não um
-// usuário logado — por isso verify_jwt = false em supabase/config.toml para esta função.
+// tenta vincular a um participante já confirmado no comercial (match por e-mail/telefone),
+// enriquecendo seus dados e marcando `form_synced_at` — o que avança o card dele para
+// "Formulário preenchido" no board de Pré-viagem. Se não achar correspondência, cria um
+// participante mesmo assim (pra não perder a resposta) e abre uma pendência sinalizando
+// que o vínculo com o comercial precisa ser revisado manualmente.
+// Roda como Edge Function no próprio projeto do CRM para poder usar a service_role key
+// injetada automaticamente pelo runtime (SUPABASE_SERVICE_ROLE_KEY) — assim nenhuma chave
+// privilegiada precisa ser copiada para fora do Lovable Cloud. Autenticação simples por
+// chave compartilhada (mesmo padrão do x-admin-key usado no app do formulário), já que quem
+// chama é o server do outro app, não um usuário logado — por isso verify_jwt = false em
+// supabase/config.toml para esta função.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 // Troque essa chave e a correspondente no app do formulário (src/lib/sync-to-crm.functions.ts)
@@ -17,6 +22,13 @@ const json = (body: unknown, status = 200) =>
 const str = (v: unknown): string | null => {
   const s = typeof v === "string" ? v.trim() : "";
   return s || null;
+};
+
+/** Últimos 8 dígitos — tolera diferença de DDI/formatação (+55, espaços, traços, parênteses). */
+const phoneKey = (v: string | null): string | null => {
+  if (!v) return null;
+  const digits = v.replace(/\D/g, "");
+  return digits.length >= 8 ? digits.slice(-8) : null;
 };
 
 const PHOTOS_BUCKET = "participant-photos";
@@ -122,21 +134,38 @@ Deno.serve(async (req) => {
 
   const foto_url = await uploadFoto(admin, passaporte, body.foto_data_url);
 
-  const { data: existing, error: lookupError } = await admin
-    .from("participants")
-    .select("id")
-    .eq("passaporte", passaporte)
-    .maybeSingle();
-  if (lookupError) {
-    console.error("[sync-participant-form] falha ao buscar participante", lookupError);
-    return json({ error: "db_error" }, 500);
+  // ────────── identifica o participante confirmado correspondente ──────────
+  // Só por e-mail (exato, case-insensitive) e telefone (últimos 8 dígitos) — nunca por
+  // passaporte (o participante criado a partir da confirmação no comercial normalmente
+  // ainda não tem passaporte cadastrado) nem por nome (risco de nomes duplicados/parecidos).
+  const email = str(payload.email);
+  const telefone = str(payload.telefone);
+  const telKey = phoneKey(telefone);
+  let existingId: string | null = null;
+
+  if (email) {
+    const { data, error } = await admin.from("participants").select("id").ilike("email", email).limit(1).maybeSingle();
+    if (error) {
+      console.error("[sync-participant-form] falha ao buscar por email", error);
+      return json({ error: "db_error" }, 500);
+    }
+    if (data) existingId = data.id;
+  }
+  if (!existingId && telKey) {
+    const { data, error } = await admin.from("participants").select("id, telefone").not("telefone", "is", null);
+    if (error) {
+      console.error("[sync-participant-form] falha ao buscar por telefone", error);
+      return json({ error: "db_error" }, 500);
+    }
+    const match = (data ?? []).find((p) => phoneKey(p.telefone as string | null) === telKey);
+    if (match) existingId = match.id as string;
   }
 
   const fields: Record<string, unknown> = {
     nome,
     nome_completo: nome,
-    email: str(payload.email),
-    telefone: str(payload.telefone),
+    email,
+    telefone,
     cargo: str(payload.cargo),
     empresa: str(payload.empresaNome),
     empresa_perfil: str(payload.empresaPerfil),
@@ -159,15 +188,18 @@ Deno.serve(async (req) => {
     ...(foto_url ? { foto_url } : {}),
   };
 
-  if (existing) {
-    const { error } = await admin.from("participants").update(fields).eq("id", existing.id);
+  if (existingId) {
+    const { error } = await admin.from("participants").update(fields).eq("id", existingId);
     if (error) {
       console.error("[sync-participant-form] falha ao atualizar participante", error);
       return json({ error: "db_error" }, 500);
     }
-    return json({ ok: true, id: existing.id, action: "updated" });
+    return json({ ok: true, id: existingId, action: "updated" });
   }
 
+  // Nenhum participante confirmado bateu por e-mail/telefone — cria mesmo assim, para não
+  // perder a resposta do formulário, mas sinaliza claramente que o vínculo com o comercial
+  // não pôde ser confirmado automaticamente, para revisão manual da equipe.
   const { data: created, error } = await admin
     .from("participants")
     .insert({
@@ -182,6 +214,7 @@ Deno.serve(async (req) => {
       voo_volta_status: "nao_iniciado",
       tier: "standard",
       valor_pago: 0,
+      observacoes: "⚠️ Criado via formulário sem correspondência com participante confirmado no comercial (e-mail/telefone não bateram) — revisar vínculo.",
     })
     .select("id")
     .single();
@@ -189,5 +222,16 @@ Deno.serve(async (req) => {
     console.error("[sync-participant-form] falha ao criar participante", error);
     return json({ error: "db_error" }, 500);
   }
-  return json({ ok: true, id: created.id, action: "created" });
+
+  const { error: pendErr } = await admin.from("pendencias").insert({
+    titulo: `Formulário sem participante confirmado — ${nome}`,
+    descricao: `O formulário público foi preenchido, mas nenhum participante confirmado no comercial bateu por e-mail (${email ?? "—"}) ou telefone (${telefone ?? "—"}). Um novo participante foi criado automaticamente para não perder os dados — revise se ele já tinha um lead confirmado e corrija o vínculo se necessário.`,
+    fase: "comercial",
+    prioridade: "alta",
+    status: "aberta",
+    ordem: 0,
+  });
+  if (pendErr) console.error("[sync-participant-form] falha ao criar pendência de revisão", pendErr);
+
+  return json({ ok: true, id: created.id, action: "created_needs_review" });
 });

@@ -85,7 +85,7 @@ function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
 }
 
 function AuthGate({ children }: { children: ReactNode }) {
-  const [unlocked, setUnlocked] = useState(false);
+  const [unlocked, setUnlocked] = useState(true);
 
   useEffect(() => {
     if (localStorage.getItem(SESSION_KEY) === "1") setUnlocked(true);
@@ -148,7 +148,7 @@ const SUBTABS: Record<string, { id: string; label: string; icon: string }[]> = {
 
 function Index() {
   const [collapsed, setCollapsed] = useState(false);
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const [tab, setTab] = useState<Tab>("preop");
   const [sub, setSub] = useState<string>("dash");
   const [etapasOpen, setEtapasOpen] = useState(true);
   const [openParticipantId, setOpenParticipantId] = useState<string | null>(null);

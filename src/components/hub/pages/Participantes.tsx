@@ -8,6 +8,7 @@ import {
   type Participant,
 } from "@/lib/hub-api";
 import { ConfirmDialog, Modal } from "@/components/hub/Modal";
+import { EditableField, EditableMultiline } from "@/components/hub/Editable";
 
 const STATUS_BADGE: Record<string, string> = {
   confirmado: "badge-ok",
@@ -351,7 +352,7 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
       <div className="panel" style={{ marginBottom: 20 }}>
         <div className="panel-header"><i className="ti ti-notes" /> Observações</div>
         <div className="panel-body">
-          <EditableMultiline value={p.observacoes ?? ""} onSave={(v) => save({ observacoes: v })} />
+          <EditableMultiline value={p.observacoes ?? ""} onSave={(v) => save({ observacoes: v })} placeholder="Clique para adicionar observações…" />
         </div>
       </div>
       <ConfirmDialog open={confirmDel} onClose={() => setConfirmDel(false)} onConfirm={() => del.mutate(p.id, { onSuccess: onBack })} title="Excluir participante" message={`Tem certeza que deseja excluir ${p.nome}? Essa ação não pode ser desfeita.`} confirmLabel="Excluir" />
@@ -417,37 +418,3 @@ function StatusRow({ label, field, value, options, onSave }: { label: string; fi
   );
 }
 
-function EditableField({ value, onSave }: { value: string; onSave: (v: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [v, setV] = useState(value);
-  if (editing) {
-    return (
-      <input className="editable-input" autoFocus value={v} onChange={(e) => setV(e.target.value)}
-        onBlur={() => { if (v !== value) onSave(v); setEditing(false); }}
-        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { setV(value); setEditing(false); } }}
-      />
-    );
-  }
-  return <span className={`editable-cell${!value ? " empty" : ""}`} onClick={() => { setV(value); setEditing(true); }}>{value || "clique para editar"}</span>;
-}
-
-function EditableMultiline({ value, onSave }: { value: string; onSave: (v: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [v, setV] = useState(value);
-  if (editing) {
-    return (
-      <>
-        <textarea className="form-textarea" value={v} onChange={(e) => setV(e.target.value)} style={{ minHeight: 120 }} />
-        <div className="msg-edit-row">
-          <button className="btn-secondary" onClick={() => { setV(value); setEditing(false); }}>Cancelar</button>
-          <button className="btn-primary" onClick={() => { onSave(v); setEditing(false); }}>Salvar</button>
-        </div>
-      </>
-    );
-  }
-  return (
-    <div onClick={() => { setV(value); setEditing(true); }} style={{ fontSize: 12, color: value ? "var(--text)" : "var(--text3)", lineHeight: 1.6, cursor: "text", minHeight: 40, whiteSpace: "pre-wrap" }}>
-      {value || "Clique para adicionar observações…"}
-    </div>
-  );
-}

@@ -64,6 +64,26 @@ export type Lead = {
   mensagem: string | null;
   origem: string | null;
   cadastrado_por: string | null;
+  // Vínculo N:N carregado junto do lead (via lead_responsaveis). A coluna texto
+  // `responsavel` acima é legada e preservada só para compatibilidade.
+  responsaveis?: Responsavel[];
+};
+
+export type Responsavel = {
+  id: string;
+  nome: string;
+  cor: string | null;
+  ativo: boolean;
+  created_at?: string;
+};
+
+export type LeadActivity = {
+  id: string;
+  lead_id: string;
+  conteudo: string;
+  autor: string | null;
+  tipo: string;
+  created_at: string;
 };
 
 export type Touchpoint = {
@@ -123,6 +143,40 @@ export type Mensagem = {
 };
 
 const sb = hubSupabase as any;
+
+// O front continua utilizável enquanto a migration comercial não foi aplicada no
+// ambiente remoto. Os IDs abaixo existem apenas no cliente e representam a coluna
+// texto legada `leads_crm.responsavel`.
+const LEGACY_RESPONSAVEIS: Responsavel[] = [
+  { id: "legacy-caetano", nome: "Caetano", cor: null, ativo: true },
+  { id: "legacy-roque", nome: "Roque", cor: null, ativo: true },
+];
+const legacyResponsavelFromName = (name: string): Responsavel => {
+  const clean = name.trim();
+  const known = LEGACY_RESPONSAVEIS.find((responsavel) => responsavel.nome.toLowerCase() === clean.toLowerCase());
+  return known ?? { id: `legacy-name:${encodeURIComponent(clean)}`, nome: clean, cor: null, ativo: true };
+};
+const legacyNameFromId = (id: string): string | null => {
+  const known = LEGACY_RESPONSAVEIS.find((responsavel) => responsavel.id === id);
+  if (known) return known.nome;
+  if (!id.startsWith("legacy-name:")) return null;
+  try { return decodeURIComponent(id.slice("legacy-name:".length)); } catch { return null; }
+};
+const isMissingCommercialTable = (error: any) =>
+  error?.code === "PGRST205" || error?.code === "42P01" || /schema cache|does not exist/i.test(error?.message ?? "");
+const responsaveisFromLegacy = (value: string | null | undefined): Responsavel[] => {
+  const clean = (value ?? "").trim();
+  const normalized = clean.toLowerCase();
+  if (!clean || normalized === "sem_responsavel") return [];
+  if (normalized === "ambos") return LEGACY_RESPONSAVEIS;
+  return clean.split(/\s*\+\s*/).filter(Boolean).map(legacyResponsavelFromName);
+};
+const legacyValueFromIds = (ids: string[]) => {
+  const names = ids.map(legacyNameFromId).filter(Boolean) as string[];
+  const normalized = names.map((name) => name.toLowerCase());
+  if (names.length === 2 && normalized.includes("caetano") && normalized.includes("roque")) return "ambos";
+  return names.join(" + ") || "sem_responsavel";
+};
 
 // ────────── PARTICIPANTS ──────────
 export function useParticipants() {
@@ -191,9 +245,25 @@ export function useLeads() {
   return useQuery<Lead[]>({
     queryKey: ["hub_leads"],
     queryFn: async () => {
+      // Tenta trazer os responsáveis vinculados no mesmo request (embed via FK).
+      const embed = await sb
+        .from("leads_crm")
+        .select("*, lead_responsaveis(responsavel_id, responsaveis(id, nome, cor, ativo))")
+        .order("passo")
+        .order("ordem");
+      if (!embed.error) {
+        return (embed.data ?? []).map((l: any) => ({
+          ...l,
+          responsaveis: (l.lead_responsaveis ?? [])
+            .map((lr: any) => lr.responsaveis)
+            .filter(Boolean),
+          lead_responsaveis: undefined,
+        }));
+      }
+      // Fallback: se a migração ainda não rodou, projeta a coluna texto antiga como tags.
       const { data, error } = await sb.from("leads_crm").select("*").order("passo").order("ordem");
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).map((l: any) => ({ ...l, responsaveis: responsaveisFromLegacy(l.responsavel) }));
     },
   });
 }
@@ -229,6 +299,121 @@ export function useDeleteLead() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_leads"] }),
+  });
+}
+
+// ────────── RESPONSÁVEIS ──────────
+export function useResponsaveis() {
+  return useQuery<Responsavel[]>({
+    queryKey: ["hub_responsaveis"],
+    queryFn: async () => {
+      const { data, error } = await sb.from("responsaveis").select("*").order("nome");
+      if (error && isMissingCommercialTable(error)) {
+        const { data: leads, error: leadsError } = await sb.from("leads_crm").select("responsavel");
+        if (leadsError) throw leadsError;
+        const all = [...LEGACY_RESPONSAVEIS, ...(leads ?? []).flatMap((lead: any) => responsaveisFromLegacy(lead.responsavel))];
+        return [...new Map(all.map((responsavel) => [responsavel.nome.toLowerCase(), responsavel])).values()]
+          .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+      }
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useCreateResponsavel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (nome: string) => {
+      const clean = nome.trim();
+      if (!clean) throw new Error("Nome vazio");
+      // Reaproveita um responsável de mesmo nome (case-insensitive) em vez de duplicar.
+      const { data: existing, error: findError } = await sb.from("responsaveis").select("*").ilike("nome", clean).maybeSingle();
+      if (findError && isMissingCommercialTable(findError)) return legacyResponsavelFromName(clean);
+      if (findError) throw findError;
+      if (existing) return existing as Responsavel;
+      const { data, error } = await sb.from("responsaveis").insert({ nome: clean }).select().single();
+      if (error && isMissingCommercialTable(error)) return legacyResponsavelFromName(clean);
+      if (error) throw error;
+      return data as Responsavel;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_responsaveis"] }),
+  });
+}
+
+/** Substitui o conjunto de responsáveis de um lead pelo array informado. */
+export function useSetLeadResponsaveis() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ leadId, responsavelIds }: { leadId: string; responsavelIds: string[] }) => {
+      const saveLegacy = async () => {
+        const { error } = await sb.from("leads_crm").update({ responsavel: legacyValueFromIds(responsavelIds) }).eq("id", leadId);
+        if (error) throw error;
+      };
+      if (responsavelIds.some((id) => id.startsWith("legacy-"))) {
+        await saveLegacy();
+        return;
+      }
+      const { error: delErr } = await sb.from("lead_responsaveis").delete().eq("lead_id", leadId);
+      if (delErr && isMissingCommercialTable(delErr)) {
+        await saveLegacy();
+        return;
+      }
+      if (delErr) throw delErr;
+      if (responsavelIds.length) {
+        const rows = responsavelIds.map((responsavel_id) => ({ lead_id: leadId, responsavel_id }));
+        const { error } = await sb.from("lead_responsaveis").insert(rows);
+        if (error) throw error;
+      }
+      const legacyValue = responsavelIds.length
+        ? await (async () => {
+            const { data, error } = await sb.from("responsaveis").select("nome").in("id", responsavelIds);
+            if (error) throw error;
+            return (data ?? []).map((responsavel: any) => responsavel.nome).join(" + ") || "sem_responsavel";
+          })()
+        : "sem_responsavel";
+      // Mantém a coluna antiga coerente para integrações que ainda a consomem.
+      const { error: legacyError } = await sb.from("leads_crm").update({ responsavel: legacyValue }).eq("id", leadId);
+      if (legacyError) throw legacyError;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["hub_leads"] }),
+        qc.invalidateQueries({ queryKey: ["hub_responsaveis"] }),
+      ]);
+    },
+  });
+}
+
+// ────────── LEAD ACTIVITIES (timeline) ──────────
+export function useLeadActivities(leadId: string | null) {
+  return useQuery<LeadActivity[]>({
+    queryKey: ["hub_lead_activities", leadId],
+    enabled: !!leadId,
+    queryFn: async () => {
+      if (!leadId) return [];
+      const { data, error } = await sb
+        .from("lead_activities")
+        .select("*")
+        .eq("lead_id", leadId)
+        .order("created_at", { ascending: false });
+      if (error && isMissingCommercialTable(error)) return [];
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useCreateLeadActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (a: { lead_id: string; conteudo: string; autor?: string | null; tipo?: string }) => {
+      const { data, error } = await sb.from("lead_activities").insert(a).select().single();
+      if (error && isMissingCommercialTable(error)) return null;
+      if (error) throw error;
+      return data as LeadActivity;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["hub_lead_activities", v.lead_id] }),
   });
 }
 
@@ -448,6 +633,16 @@ export function useUpdateMensagem() {
 }
 
 // ────────── HELPERS ──────────
+// Os valores numéricos de `passo` dos leads já existentes NUNCA são renumerados —
+// isso preservaria a etapa real deles só depois que uma migração rodasse no banco,
+// e o front já mostraria os rótulos novos antes disso, criando etapas erradas para
+// leads antigos. Por isso "Negociação" entra com um valor NOVO (9), sem deslocar
+// nenhuma etapa existente; a ordem visual no funil vem de `STAGE_ORDER`, separada
+// do valor numérico armazenado. "Declinado" não é uma etapa: é só um status
+// (ver `isDeclined`) — o `passo` de um lead declinado continua sendo a etapa real
+// em que ele estava.
+export const STAGE_NEGOCIACAO = 9;
+export const STAGE_CONFIRMADO = 7;
 export const PASSO_LABELS: Record<number, string> = {
   0: "P0 — Cadastro",
   1: "P1 — Abordagem",
@@ -457,8 +652,16 @@ export const PASSO_LABELS: Record<number, string> = {
   5: "P5 — Go / No-go",
   6: "P6 — Contrato",
   7: "P7 — Confirmado",
-  8: "Declinado",
+  [STAGE_NEGOCIACAO]: "Negociação",
 };
+/** Ordem visual das etapas no funil (kanban, filtros, seletores) — independente
+ * do valor numérico de `passo` armazenado no banco. */
+export const STAGE_ORDER = [0, 1, 2, STAGE_NEGOCIACAO, 3, 4, 5, 6, 7];
+/** Etapas consideradas "em negociação ativa" para os indicadores do dashboard. */
+export const NEGOTIATION_STAGES = [2, STAGE_NEGOCIACAO, 3, 4, 5];
+/** Rótulo de uma etapa com fallback — leads antigos que usavam o sentinela
+ * legado (passo=8, "Declinado" antes de virar status) não têm entrada aqui. */
+export const passoLabel = (n: number): string => PASSO_LABELS[n] ?? "Etapa anterior (legado)";
 
 export const fmtBRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(n);
@@ -467,3 +670,58 @@ export const respLabel = (r: string) =>
   r === "roque" ? "Roque" : r === "caetano" ? "Caetano" : "Caetano + Roque";
 export const respClass = (r: string) =>
   r === "roque" ? "resp-roque" : r === "caetano" ? "resp-caetano" : "resp-ambos";
+
+// ────────── STATUS ESTRUTURADO ──────────
+export const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: "novo", label: "Novo" },
+  { value: "abordado", label: "Abordado" },
+  { value: "em_negociacao", label: "Em negociação" },
+  { value: "confirmado", label: "Confirmado" },
+  { value: "declinado", label: "Declinado" },
+];
+const STATUS_ALIASES: Record<string, string> = {
+  cadastro: "novo",
+  cadastrado: "novo",
+  indefinido: "novo",
+  "": "novo",
+  negociacao: "em_negociacao",
+  "em negociacao": "em_negociacao",
+  "em negociação": "em_negociacao",
+};
+/** Normaliza um status livre antigo para um dos valores estruturados. */
+export const normalizeStatus = (s: string | null | undefined): string => {
+  if (!s) return "novo";
+  const low = s.toLowerCase().trim();
+  if (STATUS_ALIASES[low]) return STATUS_ALIASES[low];
+  if (STATUS_OPTIONS.some((o) => o.value === low)) return low;
+  return s; // status desconhecido: exibe como veio
+};
+export const statusLabel = (s: string | null | undefined): string => {
+  const v = normalizeStatus(s);
+  return STATUS_OPTIONS.find((o) => o.value === v)?.label ?? v;
+};
+export const STATUS_BADGE_CLASS: Record<string, string> = {
+  novo: "badge-neutral",
+  abordado: "badge-blue",
+  em_negociacao: "badge-warn",
+  confirmado: "badge-ok",
+  declinado: "badge-danger",
+};
+export const statusBadgeClass = (s: string | null | undefined) =>
+  STATUS_BADGE_CLASS[normalizeStatus(s)] ?? "badge-neutral";
+
+/** Um lead declinado deixa de ser ativo (não conta no funil, não aparece no pipeline normal).
+ * É puramente uma questão de status — o `passo` continua guardando a etapa real em que
+ * o lead estava, para que a reativação volte a um lugar coerente. */
+export const isDeclined = (l: Lead): boolean =>
+  normalizeStatus(l.status) === "declinado";
+
+// ────────── AVATAR / COR DE RESPONSÁVEL ──────────
+const RESP_HUES = [210, 262, 330, 150, 25, 190, 285, 95, 45, 0];
+export function respAvatar(nome: string): { initials: string; color: string } {
+  let h = 0;
+  for (let i = 0; i < nome.length; i++) h = (h * 31 + nome.charCodeAt(i)) >>> 0;
+  const parts = nome.trim().split(/\s+/);
+  const initials = ((parts[0]?.[0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+  return { initials: initials || "?", color: `hsl(${RESP_HUES[h % RESP_HUES.length]} 42% 46%)` };
+}
