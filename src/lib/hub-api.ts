@@ -194,7 +194,7 @@ export function useParticipants() {
     queryFn: async () => {
       const { data, error } = await sb.from("participants").select("*").order("created_at", { ascending: true });
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).filter((participant: Participant) => participant.status !== "removido_comercial");
     },
   });
 }
@@ -210,6 +210,22 @@ export function useParticipant(id: string | null) {
       return data;
     },
   });
+}
+
+async function hasActiveParticipant(nome: string | null | undefined): Promise<boolean> {
+  const clean = nome?.trim();
+  if (!clean) return false;
+  const { data, error } = await sb.from("participants").select("id,status").eq("nome", clean);
+  if (error) throw error;
+  return (data ?? []).some((participant: Pick<Participant, "status">) => participant.status !== "removido_comercial");
+}
+
+async function hasParticipantRecord(nome: string | null | undefined): Promise<boolean> {
+  const clean = nome?.trim();
+  if (!clean) return false;
+  const { data, error } = await sb.from("participants").select("id").eq("nome", clean).limit(1);
+  if (error) throw error;
+  return (data ?? []).length > 0;
 }
 
 export function useCreateParticipant() {
@@ -281,7 +297,11 @@ export function useCreateLead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (l: Partial<Lead>) => {
-      const { data, error } = await sb.from("leads_crm").insert(enforceLeadWorkflowState(l)).select().single();
+      const safeLead = enforceLeadWorkflowState(l);
+      if (safeLead.passo === STAGE_CONFIRMADO && !(await hasActiveParticipant(safeLead.nome))) {
+        throw new Error("Crie o participante antes de confirmar este contato.");
+      }
+      const { data, error } = await sb.from("leads_crm").insert(safeLead).select().single();
       if (error) throw error;
       return data;
     },
@@ -295,9 +315,28 @@ export function useUpdateLead() {
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<Lead> }) => {
       let safePatch = patch;
       if (patch.passo !== undefined || patch.status !== undefined) {
-        const { data: current, error: currentError } = await sb.from("leads_crm").select("passo,status").eq("id", id).single();
+        const { data: current, error: currentError } = await sb.from("leads_crm").select("passo,status,nome").eq("id", id).single();
         if (currentError) throw currentError;
         safePatch = enforceLeadWorkflowState(patch, current);
+        const nextPasso = safePatch.passo ?? current.passo;
+        const wasConfirmed = current.passo === STAGE_CONFIRMADO && normalizeStatus(current.status) !== "declinado";
+        const willBeConfirmed = nextPasso === STAGE_CONFIRMADO && normalizeStatus(safePatch.status ?? current.status) !== "declinado";
+        if (willBeConfirmed && !(await hasParticipantRecord(current.nome))) {
+          throw new Error("Crie o participante antes de confirmar este contato.");
+        }
+        if (wasConfirmed && !willBeConfirmed) {
+          const { error: removeError } = await sb.from("participants")
+            .update({ status: "removido_comercial", updated_at: new Date().toISOString() })
+            .eq("nome", current.nome);
+          if (removeError) throw removeError;
+        }
+        if (!wasConfirmed && willBeConfirmed) {
+          const { error: reactivateError } = await sb.from("participants")
+            .update({ status: "em_andamento", updated_at: new Date().toISOString() })
+            .eq("nome", current.nome)
+            .eq("status", "removido_comercial");
+          if (reactivateError) throw reactivateError;
+        }
       }
       const { error } = await sb.from("leads_crm").update({ ...safePatch, updated_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;

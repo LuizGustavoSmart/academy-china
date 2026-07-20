@@ -29,7 +29,7 @@ const COL_ICONS: Record<string, string> = {
   "D-14": "ti-checklist", "D-7": "ti-movie", "D-3": "ti-luggage", done: "ti-confetti",
 };
 const COL_META: Record<string, { title: string; sub: string }> = {
-  entrada: { title: "Entrada do participante", sub: "Aguardando contrato + pagamento" },
+  entrada: { title: "Entrada do participante", sub: "Pagamento confirmado — pronto para iniciar a Pré-viagem" },
   aguardando_formulario: { title: "Aguardando formulário", sub: "Aguardando preenchimento do formulário público" },
   formulario_preenchido: { title: "Formulário preenchido", sub: "Dados recebidos — pronto para a jornada" },
   done: { title: "Concluído", sub: "Prontos para embarcar" },
@@ -253,7 +253,7 @@ function CardInner({ p, tpMap, overlay, onView }: { p: Participant; tpMap: TpMap
         {next
           ? <><i className="ti ti-arrow-right" /> Próxima: <strong>{next} · {TP_NAMES[next]}</strong> <span className="pv-next-date">{getTpDateLabel(next)}</span></>
           : stageIdx === 0
-          ? <><i className="ti ti-hourglass" /> Aguardando contrato + pagamento</>
+          ? <><i className="ti ti-check" /> Pagamento confirmado — aguardando início da jornada</>
           : stageIdx === 1
           ? <><i className="ti ti-mail-forward" /> Aguardando preenchimento do formulário</>
           : stageIdx === 2
