@@ -29,9 +29,18 @@ export function ParticipantTimeline({ participantId, participantName, legacyNote
   // existentes antes desta melhoria. Ao criar o participante, elas também são
   // copiadas para o histórico próprio da Pré-viagem.
   const copied = new Set(activities.map((a) => `${a.conteudo}|${a.autor ?? ""}|${a.created_at}`));
+  const commercialLegacyNote = commercialLead?.observacoes?.trim() ?? "";
+  const legacyAlreadyPresent = !!legacyNote?.trim() || activities.some((a) => a.conteudo.trim() === commercialLegacyNote);
   const synchronizedActivities = [
     ...activities,
     ...commercialActivities.filter((a) => !copied.has(`${a.conteudo}|${a.autor ?? ""}|${a.created_at}`)).map((a) => ({ ...a, id: `commercial-${a.id}` })),
+    ...(commercialLegacyNote && !legacyAlreadyPresent ? [{
+      id: `commercial-legacy-${commercialLead?.id}`,
+      conteudo: commercialLegacyNote,
+      autor: "Comercial",
+      tipo: "observacao",
+      created_at: commercialLead?.created_at ?? new Date(0).toISOString(),
+    }] : []),
   ].sort((a, b) => b.created_at.localeCompare(a.created_at));
 
   return <div className="tl">
