@@ -359,7 +359,7 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
       <div className="panel" style={{ marginBottom: 20 }}>
         <div className="panel-header"><i className="ti ti-timeline" /> Histórico & observações</div>
         <div className="panel-body">
-          <ParticipantTimeline participantId={p.id} legacyNote={p.observacoes} />
+          <ParticipantTimeline participantId={p.id} participantName={p.nome} legacyNote={p.observacoes} />
         </div>
       </div>
       <ConfirmDialog open={confirmDel} onClose={() => setConfirmDel(false)} onConfirm={() => del.mutate(p.id, { onSuccess: onBack })} title="Excluir participante" message={`Tem certeza que deseja excluir ${p.nome}? Essa ação não pode ser desfeita.`} confirmLabel="Excluir" />
