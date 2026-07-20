@@ -156,6 +156,15 @@ const legacyResponsavelFromName = (name: string): Responsavel => {
   const known = LEGACY_RESPONSAVEIS.find((responsavel) => responsavel.nome.toLowerCase() === clean.toLowerCase());
   return known ?? { id: `legacy-name:${encodeURIComponent(clean)}`, nome: clean, cor: null, ativo: true };
 };
+
+export type ParticipantActivity = {
+  id: string;
+  participant_id: string;
+  conteudo: string;
+  autor: string | null;
+  tipo: string;
+  created_at: string;
+};
 const legacyNameFromId = (id: string): string | null => {
   const known = LEGACY_RESPONSAVEIS.find((responsavel) => responsavel.id === id);
   if (known) return known.nome;
@@ -719,6 +728,53 @@ export const isConfirmedLead = (lead: Pick<Lead, "passo" | "status">): boolean =
   effectiveLeadStatus(lead) === "confirmado" && lead.passo === STAGE_CONFIRMADO;
 function normalizeLeadForView(lead: Lead): Lead {
   return { ...lead, status: effectiveLeadStatus(lead) };
+}
+
+// ────────── PARTICIPANT ACTIVITIES (timeline da Pré-viagem) ──────────
+export function useParticipantActivities(participantId: string | null) {
+  return useQuery<ParticipantActivity[]>({
+    queryKey: ["hub_participant_activities", participantId],
+    enabled: !!participantId,
+    queryFn: async () => {
+      if (!participantId) return [];
+      const { data, error } = await sb
+        .from("participant_activities")
+        .select("*")
+        .eq("participant_id", participantId)
+        .order("created_at", { ascending: false });
+      if (error && isMissingCommercialTable(error)) return [];
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useCreateParticipantActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (a: { participant_id: string; conteudo: string; autor?: string | null; tipo?: string; created_at?: string }) => {
+      const { data, error } = await sb.from("participant_activities").insert(a).select().single();
+      if (error && isMissingCommercialTable(error)) return null;
+      if (error) throw error;
+      return data as ParticipantActivity;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["hub_participant_activities", v.participant_id] }),
+  });
+}
+
+export async function copyLeadHistoryToParticipant(leadId: string, participantId: string) {
+  const { data, error } = await sb
+    .from("lead_activities")
+    .select("conteudo, autor, tipo, created_at")
+    .eq("lead_id", leadId)
+    .order("created_at", { ascending: true });
+  if (error && isMissingCommercialTable(error)) return;
+  if (error) throw error;
+  if (!data?.length) return;
+  const rows = data.map((a: Pick<LeadActivity, "conteudo" | "autor" | "tipo" | "created_at">) => ({ ...a, participant_id: participantId }));
+  const { error: insertError } = await sb.from("participant_activities").insert(rows);
+  if (insertError && isMissingCommercialTable(insertError)) return;
+  if (insertError) throw insertError;
 }
 /** Regra única do funil: apenas P7 pode carregar o status Confirmado.
  * Ao confirmar, o lead vai para P7; ao retornar de P7, deixa de ser confirmado. */

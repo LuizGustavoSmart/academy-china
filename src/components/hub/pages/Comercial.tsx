@@ -7,7 +7,7 @@ import {
   PASSO_LABELS, STAGE_CONFIRMADO, STAGE_NEGOCIACAO, STAGE_ORDER, NEGOTIATION_STAGES, passoLabel, pipelineStage,
   fmtBRL, normalizeStatus, statusLabel, statusBadgeClass, isDeclined, isConfirmedLead, STATUS_OPTIONS, respAvatar,
   useCreateLead, useDeleteLead, useLeads, useParticipants, usePendencias, useResponsaveis,
-  useSetLeadResponsaveis, useUpdateLead, useUpdateParticipant, useCreateParticipant, useCreateLeadActivity,
+  useSetLeadResponsaveis, useUpdateLead, useUpdateParticipant, useCreateParticipant, useCreateLeadActivity, useLeadActivities, copyLeadHistoryToParticipant,
   useCreateResponsavel,
   type Lead, type Participant,
 } from "@/lib/hub-api";
@@ -910,10 +910,22 @@ function LeadModal({ open, onClose, initialPasso }: { open: boolean; onClose: ()
 
 function PromoteToParticipantModal({ lead, onClose, onDone }: { lead: Lead; onClose: () => void; onDone?: (id: string) => void }) {
   const create = useCreateParticipant();
-  const [form, setForm] = useState({ nome: lead.nome, cargo: lead.cargo ?? "", empresa: lead.empresa ?? "", cidade: lead.cidade ?? "", telefone: lead.telefone ?? "", email: lead.email ?? "", restricoes_alimentares: "", tier: "standard", valor_pago: 93600, pagamento_status: "confirmado" as const, contrato_status: "assinado" as const, status: "em_andamento" });
+  const { data: leadActivities = [] } = useLeadActivities(lead.id);
+  const [form, setForm] = useState({ nome: lead.nome, cargo: lead.cargo ?? "", empresa: lead.empresa ?? "", cidade: lead.cidade ?? "", telefone: lead.telefone ?? "", email: lead.email ?? "", observacoes: lead.observacoes ?? "", restricoes_alimentares: "", tier: "standard", valor_pago: 93600, pagamento_status: "confirmado" as const, contrato_status: "assinado" as const, status: "em_andamento" });
+  const promote = () => create.mutate(form, {
+    onSuccess: async (np: any) => {
+      if (!np?.id) return;
+      try {
+        await copyLeadHistoryToParticipant(lead.id, np.id);
+      } finally {
+        onClose();
+        onDone?.(np.id);
+      }
+    },
+  });
   return (
     <Modal open onClose={onClose} title={`Promover ${lead.nome} a participante`}>
-      <p style={{ fontSize: 12, color: "var(--text2)", marginBottom: 14 }}>O lead foi confirmado. Complete os dados para criar o registro de participante — só a partir daqui ele entra no pipeline da Pré-viagem.</p>
+      <p style={{ fontSize: 12, color: "var(--text2)", marginBottom: 14 }}>O lead foi confirmado. Complete os dados para criar o registro de participante — só a partir daqui ele entra no pipeline da Pré-viagem. {leadActivities.length || lead.observacoes?.trim() ? "As observações e o histórico comercial serão preservados na Pré-viagem." : ""}</p>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <Field label="Nome *" v={form.nome} on={(v) => setForm({ ...form, nome: v })} />
         <Field label="Cargo" v={form.cargo} on={(v) => setForm({ ...form, cargo: v })} />
@@ -926,7 +938,7 @@ function PromoteToParticipantModal({ lead, onClose, onDone }: { lead: Lead; onCl
       </div>
       <div className="flex-end">
         <button className="btn-secondary" onClick={onClose}>Manter só como lead</button>
-        <button className="btn-primary" onClick={() => create.mutate(form, { onSuccess: (np: any) => { onClose(); if (np?.id) onDone?.(np.id); } })}>Criar participante</button>
+        <button className="btn-primary" onClick={promote} disabled={create.isPending}>Criar participante</button>
       </div>
     </Modal>
   );
