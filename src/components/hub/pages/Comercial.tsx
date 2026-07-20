@@ -22,6 +22,7 @@ import { LeadTimeline } from "@/components/hub/LeadTimeline";
 // valor numérico de `passo`). "Declinado" não é uma etapa: é um status que retira o lead do funil.
 const STAGES = STAGE_ORDER;
 const stageRank = (s: number) => { const i = STAGE_ORDER.indexOf(pipelineStage(s)); return i === -1 ? 999 : i; };
+const etapaLabel = (stage: number) => stage === -1 ? "Declinado" : passoLabel(stage).replace(/^P\d+\s*—\s*/, "");
 
 export function ComercialPage({ sub, onViewParticipant }: { sub: string; onViewParticipant?: (id: string) => void }) {
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
@@ -55,6 +56,7 @@ function ComercialDash() {
   const { data: pendencias = [] } = usePendencias();
   const ativos = leads.filter((l) => !isDeclined(l) && !isConfirmedLead(l));
   const declinados = leads.filter(isDeclined);
+  const contratos = ativos.filter((l) => pipelineStage(l.passo) === 6).length;
   const emNegociacao = ativos.filter((l) => NEGOTIATION_STAGES.includes(l.passo)).length;
   const confirmedLeadNames = leads
     .filter(isConfirmedLead)
@@ -70,6 +72,7 @@ function ComercialDash() {
         <Metric icon="ti-users" label="Leads ativos" value={String(ativos.length)} sub="ainda no funil comercial" />
         <Metric icon="ti-check" label="Confirmados" value={String(confirmados)} sub="leads e participantes, sem duplicar" cls="metric-ok" />
         <Metric icon="ti-trending-up" label="Em negociação" value={String(emNegociacao)} sub="etapa Negociação" cls="metric-warn" />
+        <Metric icon="ti-file-text" label="Contratos" value={String(contratos)} sub="etapa Contrato" cls="metric-warn" />
         <Metric icon="ti-user-x" label="Leads declinados" value={String(declinados.length)} sub="recusaram / desistiram" cls="metric-danger" />
         <Metric icon="ti-currency-dollar" label="Ticket médio" value={fmtBRL(107250)} sub="R$ 99k–R$ 115,5k" />
         <Metric icon="ti-alert-circle" label="Pendências" value={String(pendOpen)} sub="para operacionalizar" cls="metric-danger" />
@@ -93,7 +96,7 @@ function Metric({ icon, label, value, sub, cls }: any) {
 
 // ══════════════════════════ LEADS (tabela + filtros) ══════════════════════════
 type View = "ativos" | "confirmados" | "declinados" | "todos";
-type Sort = "recent" | "old" | "nome" | "empresa" | "passo" | "status";
+type Sort = "recent" | "old" | "nome" | "empresa" | "passo";
 const isConfirmedCommercialLead = (lead: Lead) => isConfirmedLead(lead);
 
 function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) => void; onViewParticipant?: (id: string) => void }) {
@@ -109,7 +112,6 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
   const [q, setQ] = useState("");
   const [view, setView] = useState<View>("ativos");
   const [fPasso, setFPasso] = useState<string>("all");
-  const [fStatus, setFStatus] = useState<string>("all");
   const [fResp, setFResp] = useState<string>("all");
   const [sort, setSort] = useState<Sort>("recent");
 
@@ -130,8 +132,9 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
     else if (view === "confirmados") r = r.filter(isConfirmedCommercialLead);
     else if (view === "declinados") r = r.filter(isDeclined);
     r = r.filter((l) => matchText([l.nome, l.empresa, l.email, l.telefone, l.cargo, l.cidade]));
-    if (fPasso !== "all") r = r.filter((l) => pipelineStage(l.passo) === Number(fPasso));
-    if (fStatus !== "all") r = r.filter((l) => normalizeStatus(l.status) === fStatus);
+    if (fPasso !== "all") r = Number(fPasso) === DECLINADO_COL
+      ? r.filter(isDeclined)
+      : r.filter((l) => !isDeclined(l) && pipelineStage(l.passo) === Number(fPasso));
     if (fResp !== "all") r = r.filter((l) => (l.responsaveis ?? []).some((x) => x.id === fResp));
     const cmp: Record<Sort, (a: Lead, b: Lead) => number> = {
       recent: (a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""),
@@ -141,10 +144,9 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
       // Ordena pela posição visual no funil, não pelo valor numérico bruto de `passo`
       // (Negociação usa um valor alto, 9, mas aparece entre Qualificação e Mapa enviado).
       passo: (a, b) => stageRank(a.passo) - stageRank(b.passo),
-      status: (a, b) => statusLabel(a.status).localeCompare(statusLabel(b.status), "pt-BR"),
     };
     return r.sort(cmp[sort]);
-  }, [leads, view, term, fPasso, fStatus, fResp, sort]);
+  }, [leads, view, term, fPasso, fResp, sort]);
 
   // Participantes sem lead correspondente entram apenas na seção Confirmados (e em Todos).
   const showOrphans = view === "confirmados" || view === "todos";
@@ -176,12 +178,9 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
           <button className={view === "todos" ? "active" : ""} onClick={() => setView("todos")}>Todos</button>
         </div>
         <select className="filters-select" value={fPasso} onChange={(e) => setFPasso(e.target.value)}>
-          <option value="all">Todos os passos</option>
-          {STAGES.map((s) => <option key={s} value={s}>{PASSO_LABELS[s]}</option>)}
-        </select>
-        <select className="filters-select" value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
-          <option value="all">Todos os status</option>
-          {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          <option value="all">Todas as etapas</option>
+          {STAGES.map((s) => <option key={s} value={s}>{etapaLabel(s)}</option>)}
+          <option value={DECLINADO_COL}>Declinado</option>
         </select>
         <select className="filters-select" value={fResp} onChange={(e) => setFResp(e.target.value)}>
           <option value="all">Todos os responsáveis</option>
@@ -192,16 +191,15 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
           <option value="old">Mais antigos</option>
           <option value="nome">Nome (A–Z)</option>
           <option value="empresa">Empresa (A–Z)</option>
-          <option value="passo">Passo</option>
-          <option value="status">Status</option>
+          <option value="passo">Etapa</option>
         </select>
       </div>
 
       <div className="table-wrap">
         <table>
-          <thead><tr><th>Data</th><th>Nome</th><th>Empresa</th><th>Email</th><th>Telefone</th><th>Cidade</th><th>Passo</th><th>Cadastrado por</th><th>Responsável</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Data</th><th>Nome</th><th>Empresa</th><th>Email</th><th>Telefone</th><th>Cidade</th><th>Etapa</th><th>Cadastrado por</th><th>Responsável</th><th></th></tr></thead>
           <tbody>
-            {rows.length === 0 && (!showOrphans || orphanRows.length === 0) && <tr><td colSpan={11} style={{ textAlign: "center", color: "var(--text3)", padding: 16 }}>Nenhum lead encontrado com os filtros atuais.</td></tr>}
+            {rows.length === 0 && (!showOrphans || orphanRows.length === 0) && <tr><td colSpan={10} style={{ textAlign: "center", color: "var(--text3)", padding: 16 }}>Nenhum lead encontrado com os filtros atuais.</td></tr>}
             {rows.map((l) => (
               <tr key={l.id} style={isDeclined(l) ? { opacity: 0.7 } : undefined}>
                 <td style={{ fontSize: 11, color: "var(--text2)" }}>{l.created_at ? new Date(l.created_at).toLocaleDateString("pt-BR") : "—"}</td>
@@ -225,7 +223,6 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
                     <i className="ti ti-chevron-down" />
                   </button>
                 </td>
-                <td><StatusInlineSelect lead={l} hasParticipant={participantNames.has(l.nome.toLowerCase().trim())} onPromotionRequired={() => setPromotingLeadId(l.id)} /></td>
                 <td><button className="btn-secondary" style={{ padding: "4px 10px", fontSize: 11 }} onClick={() => onOpenLead(l.id)}><i className="ti ti-pencil" /></button></td>
               </tr>
             ))}
@@ -237,10 +234,9 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
                 <td>{p.email ?? "—"}</td>
                 <td>{p.telefone ?? "—"}</td>
                 <td>{p.cidade ?? "—"}</td>
-                <td>{PASSO_LABELS[STAGE_CONFIRMADO]}</td>
+                <td><span className="badge badge-ok">{etapaLabel(STAGE_CONFIRMADO)}</span></td>
                 <td>—</td>
                 <td><span style={{ fontSize: 11, color: "var(--text3)" }}>—</span></td>
-                <td><span className="badge badge-ok">Confirmado</span></td>
                 <td><button className="btn-secondary" style={{ padding: "4px 10px", fontSize: 11 }} onClick={() => setEditingPart(p)}><i className="ti ti-pencil" /></button></td>
               </tr>
             ))}
@@ -259,20 +255,25 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
 function PassoInlineSelect({ lead, hasParticipant, onPromotionRequired }: { lead: Lead; hasParticipant: boolean; onPromotionRequired: () => void }) {
   const update = useUpdateLead();
   const currentStage = pipelineStage(lead.passo);
-  // Leads antigos declinados no sentinela legado (passo=8) não têm entrada em STAGES.
+  const declined = isDeclined(lead);
   const options = STAGES.includes(currentStage) ? STAGES : [...STAGES, currentStage];
+  const selected = declined ? DECLINADO_COL : currentStage;
+  const color = COL_COLOR[selected] ?? "var(--border)";
   return (
     <select
       className="tier-select-inline"
-      value={String(currentStage)}
+      value={String(selected)}
+      style={{ borderColor: color, background: `${color}18`, color }}
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => {
         const passo = Number(e.target.value);
+        if (passo === DECLINADO_COL) { update.mutate({ id: lead.id, patch: { status: "declinado" } }); return; }
         if (passo === STAGE_CONFIRMADO && !hasParticipant) { onPromotionRequired(); return; }
-        update.mutate({ id: lead.id, patch: { passo } });
+        update.mutate({ id: lead.id, patch: { passo, ...(declined ? { status: "abordado" } : {}) } });
       }}
     >
-      {options.map((s) => <option key={s} value={s}>{passoLabel(s)}</option>)}
+      {options.map((s) => <option key={s} value={s}>{etapaLabel(s)}</option>)}
+      <option value={DECLINADO_COL}>Declinado</option>
     </select>
   );
 }
@@ -630,7 +631,6 @@ function LeadCardInner({ lead, overlay, onDelete, onEdit }: { lead: Lead; overla
         {(lead.responsaveis?.length ?? 0) > 0
           ? <ResponsavelTags responsaveis={lead.responsaveis} size={18} max={2} />
           : <span className="ck-noresp"><i className="ti ti-user" /> Sem responsável</span>}
-        <span className={`badge ${statusBadgeClass(lead.status)}`} style={{ fontSize: 10 }}>{statusLabel(lead.status)}</span>
       </div>
       <div className="ck-row ck-row-dim">
         <span title="Data de cadastro"><i className="ti ti-calendar" /> {lead.created_at ? new Date(lead.created_at).toLocaleDateString("pt-BR") : "—"}</span>
@@ -750,8 +750,7 @@ function LeadDetail({ id, onBack, onViewParticipant }: { id: string; onBack: () 
           <div style={{ fontSize: 18, fontWeight: 500 }}>{p.nome}</div>
           <div style={{ fontSize: 13, color: "var(--text2)", marginTop: 2 }}>{[p.cargo, p.empresa, p.cidade].filter(Boolean).join(" · ") || "—"}</div>
           <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-            <span className="badge badge-neutral">{passoLabel(p.passo)}</span>
-            <span className={`badge ${statusBadgeClass(p.status)}`}>{statusLabel(p.status)}</span>
+            <span className="badge badge-neutral" style={{ borderColor: COL_COLOR[isDeclined(p) ? DECLINADO_COL : pipelineStage(p.passo)], color: COL_COLOR[isDeclined(p) ? DECLINADO_COL : pipelineStage(p.passo)] }}>{etapaLabel(isDeclined(p) ? DECLINADO_COL : pipelineStage(p.passo))}</span>
             <ResponsavelTags responsaveis={p.responsaveis} />
           </div>
         </div>
@@ -773,16 +772,15 @@ function LeadDetail({ id, onBack, onViewParticipant }: { id: string; onBack: () 
           <div className="panel-header"><i className="ti ti-git-branch" /> Funil comercial</div>
           <div className="panel-body">
             <SelectRow
-              label="Etapa (passo)"
+              label="Etapa"
               value={String(pipelineStage(p.passo))}
               onChange={(v) => {
                 const passo = Number(v);
                 if (passo === STAGE_CONFIRMADO && !alreadyParticipant) { setPromote(true); return; }
                 save({ passo });
               }}
-              options={(STAGES.includes(pipelineStage(p.passo)) ? STAGES : [...STAGES, pipelineStage(p.passo)]).map((s) => ({ value: String(s), label: passoLabel(s) }))}
+              options={(STAGES.includes(pipelineStage(p.passo)) ? STAGES : [...STAGES, pipelineStage(p.passo)]).map((s) => ({ value: String(s), label: etapaLabel(s) }))}
             />
-            <SelectRow label="Status" value={currentStatus} onChange={onChangeStatus} options={STATUS_OPTIONS} />
             <div style={{ padding: "8px 0" }}>
               <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 6 }}>Responsáveis</div>
               <ResponsavelSelect value={respIds} onChange={(ids) => setRespDraft(ids)} />
