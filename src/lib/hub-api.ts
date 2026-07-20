@@ -258,12 +258,12 @@ export function useLeads() {
             .map((lr: any) => lr.responsaveis)
             .filter(Boolean),
           lead_responsaveis: undefined,
-        }));
+        })).map(normalizeLeadForView);
       }
       // Fallback: se a migração ainda não rodou, projeta a coluna texto antiga como tags.
       const { data, error } = await sb.from("leads_crm").select("*").order("passo").order("ordem");
       if (error) throw error;
-      return (data ?? []).map((l: any) => ({ ...l, responsaveis: responsaveisFromLegacy(l.responsavel) }));
+      return (data ?? []).map((l: any) => normalizeLeadForView({ ...l, responsaveis: responsaveisFromLegacy(l.responsavel) }));
     },
   });
 }
@@ -272,7 +272,7 @@ export function useCreateLead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (l: Partial<Lead>) => {
-      const { data, error } = await sb.from("leads_crm").insert(l).select().single();
+      const { data, error } = await sb.from("leads_crm").insert(enforceLeadWorkflowState(l)).select().single();
       if (error) throw error;
       return data;
     },
@@ -284,7 +284,13 @@ export function useUpdateLead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<Lead> }) => {
-      const { error } = await sb.from("leads_crm").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
+      let safePatch = patch;
+      if (patch.passo !== undefined || patch.status !== undefined) {
+        const { data: current, error: currentError } = await sb.from("leads_crm").select("passo,status").eq("id", id).single();
+        if (currentError) throw currentError;
+        safePatch = enforceLeadWorkflowState(patch, current);
+      }
+      const { error } = await sb.from("leads_crm").update({ ...safePatch, updated_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_leads"] }),
@@ -643,6 +649,8 @@ export function useUpdateMensagem() {
 // em que ele estava.
 export const STAGE_NEGOCIACAO = 9;
 export const STAGE_CONFIRMADO = 7;
+/** Etapas removidas do funil visual; os registros históricos delas ficam agrupados em Negociação. */
+export const LEGACY_NEGOTIATION_STAGES = [3, 4, 5];
 export const PASSO_LABELS: Record<number, string> = {
   0: "P0 — Cadastro",
   1: "P1 — Abordagem",
@@ -656,9 +664,12 @@ export const PASSO_LABELS: Record<number, string> = {
 };
 /** Ordem visual das etapas no funil (kanban, filtros, seletores) — independente
  * do valor numérico de `passo` armazenado no banco. */
-export const STAGE_ORDER = [0, 1, 2, STAGE_NEGOCIACAO, 3, 4, 5, 6, 7];
+export const STAGE_ORDER = [0, 1, 2, STAGE_NEGOCIACAO, 6, 7];
 /** Etapas consideradas "em negociação ativa" para os indicadores do dashboard. */
-export const NEGOTIATION_STAGES = [2, STAGE_NEGOCIACAO, 3, 4, 5];
+export const NEGOTIATION_STAGES = [STAGE_NEGOCIACAO, ...LEGACY_NEGOTIATION_STAGES];
+/** Converte os passos antigos P3/P4/P5 para a única coluna de Negociação sem perder os dados históricos. */
+export const pipelineStage = (passo: number): number =>
+  LEGACY_NEGOTIATION_STAGES.includes(passo) ? STAGE_NEGOCIACAO : passo;
 /** Rótulo de uma etapa com fallback — leads antigos que usavam o sentinela
  * legado (passo=8, "Declinado" antes de virar status) não têm entrada aqui. */
 export const passoLabel = (n: number): string => PASSO_LABELS[n] ?? "Etapa anterior (legado)";
@@ -696,6 +707,39 @@ export const normalizeStatus = (s: string | null | undefined): string => {
   if (STATUS_OPTIONS.some((o) => o.value === low)) return low;
   return s; // status desconhecido: exibe como veio
 };
+/** Status efetivo mostrado no CRM. P7 é a confirmação; fora de P7, "Confirmado"
+ * é tratado como negociação até o registro ser persistido novamente. */
+export const effectiveLeadStatus = (lead: Pick<Lead, "passo" | "status">): string => {
+  const status = normalizeStatus(lead.status);
+  if (status === "declinado") return status;
+  if (lead.passo === STAGE_CONFIRMADO) return "confirmado";
+  return status === "confirmado" ? "em_negociacao" : status;
+};
+export const isConfirmedLead = (lead: Pick<Lead, "passo" | "status">): boolean =>
+  effectiveLeadStatus(lead) === "confirmado" && lead.passo === STAGE_CONFIRMADO;
+function normalizeLeadForView(lead: Lead): Lead {
+  return { ...lead, status: effectiveLeadStatus(lead) };
+}
+/** Regra única do funil: apenas P7 pode carregar o status Confirmado.
+ * Ao confirmar, o lead vai para P7; ao retornar de P7, deixa de ser confirmado. */
+export function enforceLeadWorkflowState<T extends Partial<Pick<Lead, "passo" | "status">>>(
+  patch: T,
+  current?: Pick<Lead, "passo" | "status">,
+): T {
+  const next = { ...patch } as T & { passo?: number; status?: string | null };
+  let passo = next.passo ?? current?.passo;
+  let status = normalizeStatus(next.status ?? current?.status);
+
+  // Escolher explicitamente o status Confirmado sempre promove para P7. Já uma mudança
+  // de etapa para fora de P7 rebaixa o status, em vez de devolver o card ao P7.
+  if (patch.status !== undefined && normalizeStatus(patch.status) === "confirmado") passo = STAGE_CONFIRMADO;
+  if (passo === STAGE_CONFIRMADO && status !== "declinado") status = "confirmado";
+  if (passo !== undefined && passo !== STAGE_CONFIRMADO && status === "confirmado") status = "em_negociacao";
+
+  if (patch.passo !== undefined || passo === STAGE_CONFIRMADO) next.passo = passo;
+  if (patch.status !== undefined || passo === STAGE_CONFIRMADO || (current && current.passo === STAGE_CONFIRMADO && passo !== STAGE_CONFIRMADO)) next.status = status;
+  return next;
+}
 export const statusLabel = (s: string | null | undefined): string => {
   const v = normalizeStatus(s);
   return STATUS_OPTIONS.find((o) => o.value === v)?.label ?? v;

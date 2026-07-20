@@ -1,4 +1,4 @@
-import { useCustos, useFinanceiroConfig, useLeads, useParticipants, usePendencias, custoValor, categoriaLabel, fmtBRL, isDeclined, normalizeStatus, NEGOTIATION_STAGES, STAGE_CONFIRMADO } from "@/lib/hub-api";
+import { useCustos, useFinanceiroConfig, useLeads, useParticipants, usePendencias, custoValor, categoriaLabel, fmtBRL, isDeclined, isConfirmedLead, pipelineStage, NEGOTIATION_STAGES, STAGE_NEGOCIACAO } from "@/lib/hub-api";
 
 export function DashboardPage() {
   const { data: participants = [] } = useParticipants();
@@ -9,7 +9,7 @@ export function DashboardPage() {
 
   const paidParticipants = participants.filter((p) => p.pagamento_status === "confirmado");
   const confirmedLeadNames = leads
-    .filter((lead) => !isDeclined(lead) && (normalizeStatus(lead.status) === "confirmado" || lead.passo === STAGE_CONFIRMADO))
+    .filter(isConfirmedLead)
     .map((lead) => lead.nome.toLowerCase().trim());
   const paidParticipantNames = paidParticipants.map((participant) => participant.nome.toLowerCase().trim());
   // Um participante promovido a partir de um lead confirmado conta só uma vez.
@@ -21,7 +21,7 @@ export function DashboardPage() {
   const falta = Math.max(0, breakEvenTotal - pagamentosRecebidos);
 
   const activeLeads = leads.filter((lead) =>
-    !isDeclined(lead) && normalizeStatus(lead.status) !== "confirmado" && lead.passo !== STAGE_CONFIRMADO,
+    !isDeclined(lead) && !isConfirmedLead(lead),
   );
   const totalFunil = activeLeads.length;
   const leadsAtivos = activeLeads.filter((l) => NEGOTIATION_STAGES.includes(l.passo)).length;
@@ -76,16 +76,17 @@ export function DashboardPage() {
                 { p: 0, label: "P0 — Cadastro",   color: "#52b788" },
                 { p: 1, label: "P1 — Abordagem",   color: "var(--text3)" },
                 { p: 2, label: "P2 — Qualificação", color: "var(--purple)" },
-                { p: 3, label: "P3 — Mapa enviado", color: "var(--blue)" },
-                { p: 4, label: "P4 — Voos sugeridos", color: "#378add" },
-                { p: 5, label: "P5 — Go / No-go",  color: "var(--amber)" },
+                { p: STAGE_NEGOCIACAO, label: "Negociação", color: "var(--amber)" },
                 { p: 6, label: "P6 — Contrato",    color: "#d85a30" },
                 { p: 7, label: "P7 — Confirmado",  color: "var(--teal)" },
-                { p: 8, label: "Declinado",         color: "#c0392b" },
+                { p: -1, label: "Declinado",        color: "#c0392b" },
               ];
-              const max = Math.max(1, ...stages.map(({ p }) => leads.filter((l) => l.passo === p).length));
+              const countStage = (p: number) => p === -1
+                ? leads.filter(isDeclined).length
+                : leads.filter((lead) => !isDeclined(lead) && pipelineStage(lead.passo) === p).length;
+              const max = Math.max(1, ...stages.map(({ p }) => countStage(p)));
               return stages.map(({ p, label, color }) => {
-                const count = leads.filter((l) => l.passo === p).length;
+                const count = countStage(p);
                 return (
                   <div key={p} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ fontSize: 12, color: "var(--text2)", width: 130, flexShrink: 0 }}>{label}</span>
