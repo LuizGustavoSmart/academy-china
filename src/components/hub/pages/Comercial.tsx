@@ -254,27 +254,42 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
 /** Etapa do funil editável direto na linha da tabela — sem precisar abrir o detalhamento. */
 function PassoInlineSelect({ lead, hasParticipant, onPromotionRequired }: { lead: Lead; hasParticipant: boolean; onPromotionRequired: () => void }) {
   const update = useUpdateLead();
+  const [open, setOpen] = useState(false);
   const currentStage = pipelineStage(lead.passo);
   const declined = isDeclined(lead);
   const options = STAGES.includes(currentStage) ? STAGES : [...STAGES, currentStage];
   const selected = declined ? DECLINADO_COL : currentStage;
   const color = COL_COLOR[selected] ?? "var(--border)";
+  const choose = (passo: number) => {
+    setOpen(false);
+    if (passo === DECLINADO_COL) { update.mutate({ id: lead.id, patch: { status: "declinado" } }); return; }
+    if (passo === STAGE_CONFIRMADO && !hasParticipant) { onPromotionRequired(); return; }
+    update.mutate({ id: lead.id, patch: { passo, ...(declined ? { status: "abordado" } : {}) } });
+  };
   return (
-    <select
-      className="tier-select-inline"
-      value={String(selected)}
-      style={{ borderColor: color, background: `${color}18`, color }}
-      onClick={(e) => e.stopPropagation()}
-      onChange={(e) => {
-        const passo = Number(e.target.value);
-        if (passo === DECLINADO_COL) { update.mutate({ id: lead.id, patch: { status: "declinado" } }); return; }
-        if (passo === STAGE_CONFIRMADO && !hasParticipant) { onPromotionRequired(); return; }
-        update.mutate({ id: lead.id, patch: { passo, ...(declined ? { status: "abordado" } : {}) } });
-      }}
-    >
-      {options.map((s) => <option key={s} value={s}>{etapaLabel(s)}</option>)}
-      <option value={DECLINADO_COL}>Declinado</option>
-    </select>
+    <div style={{ position: "relative", minWidth: 126 }} onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 7, border: `1px solid ${color}`, color, background: `${color}14`, borderRadius: 999, padding: "5px 8px 5px 9px", fontSize: 11, fontWeight: 600, cursor: "pointer", lineHeight: 1 }}
+      >
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: color }} />{etapaLabel(selected)}</span>
+        <i className={`ti ti-chevron-${open ? "up" : "down"}`} style={{ fontSize: 13 }} />
+      </button>
+      {open && <div role="listbox" style={{ position: "absolute", zIndex: 30, top: "calc(100% + 6px)", left: 0, minWidth: 184, padding: 5, border: "1px solid var(--border)", borderRadius: 10, background: "var(--surface, #fff)", boxShadow: "0 12px 28px rgba(20,30,45,.18)" }}>
+        {[...options, DECLINADO_COL].map((stage) => {
+          const stageColor = COL_COLOR[stage] ?? "var(--text2)";
+          const active = stage === selected;
+          return <button key={stage} type="button" role="option" aria-selected={active} onClick={() => choose(stage)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "8px 9px", border: 0, borderRadius: 7, background: active ? `${stageColor}18` : "transparent", color: stageColor, fontSize: 11, fontWeight: active ? 700 : 500, textAlign: "left", cursor: "pointer" }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: stageColor, flexShrink: 0 }} />
+            <span style={{ flex: 1 }}>{etapaLabel(stage)}</span>
+            {active && <i className="ti ti-check" style={{ fontSize: 13 }} />}
+          </button>;
+        })}
+      </div>}
+    </div>
   );
 }
 
