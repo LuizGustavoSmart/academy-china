@@ -522,6 +522,28 @@ export function useCreateLeadActivity() {
   });
 }
 
+export function useUpdateLeadActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (a: { id: string; lead_id: string; conteudo: string }) => {
+      const { error } = await sb.from("lead_activities").update({ conteudo: a.conteudo }).eq("id", a.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["hub_lead_activities", v.lead_id] }),
+  });
+}
+
+export function useDeleteLeadActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (a: { id: string; lead_id: string }) => {
+      const { error } = await sb.from("lead_activities").delete().eq("id", a.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["hub_lead_activities", v.lead_id] }),
+  });
+}
+
 // ────────── TOUCHPOINTS ──────────
 export function useTouchpoints() {
   return useQuery<Touchpoint[]>({
@@ -847,6 +869,28 @@ export function useCreateParticipantActivity() {
       if (error && isMissingCommercialTable(error)) return null;
       if (error) throw error;
       return data as ParticipantActivity;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["hub_participant_activities", v.participant_id] }),
+  });
+}
+
+export function useUpdateParticipantActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (a: { id: string; participant_id: string; conteudo: string }) => {
+      const { error } = await sb.from("participant_activities").update({ conteudo: a.conteudo }).eq("id", a.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["hub_participant_activities", v.participant_id] }),
+  });
+}
+
+export function useDeleteParticipantActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (a: { id: string; participant_id: string }) => {
+      const { error } = await sb.from("participant_activities").delete().eq("id", a.id);
+      if (error) throw error;
     },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["hub_participant_activities", v.participant_id] }),
   });

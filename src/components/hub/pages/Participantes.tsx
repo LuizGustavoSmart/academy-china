@@ -8,7 +8,7 @@ import {
   type Participant,
 } from "@/lib/hub-api";
 import { ConfirmDialog, Modal } from "@/components/hub/Modal";
-import { EditableField, EditableMultiline } from "@/components/hub/Editable";
+import { EditableField } from "@/components/hub/Editable";
 import { ParticipantTimeline } from "@/components/hub/ParticipantTimeline";
 
 const STATUS_BADGE: Record<string, string> = {
@@ -348,12 +348,6 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
         <div className="panel-header"><i className="ti ti-meat" /> Saúde & restrições</div>
         <div className="panel-body">
           <ProfileTable rows={[["Restrições alimentares","restricoes_alimentares"],["Alergias","alergias"],["Observações médicas","observacoes_medicas"],["Medicamentos","medicamentos"]]} participant={p} onSave={save} />
-        </div>
-      </div>
-      <div className="panel" style={{ marginBottom: 20 }}>
-        <div className="panel-header"><i className="ti ti-notes" /> Observações</div>
-        <div className="panel-body">
-          <EditableMultiline value={p.observacoes ?? ""} onSave={(v) => save({ observacoes: v })} placeholder="Clique para adicionar observações…" />
         </div>
       </div>
       <div className="panel" style={{ marginBottom: 20 }}>

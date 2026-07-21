@@ -34,6 +34,102 @@ export function ResponsavelTags({ responsaveis, size = 20, max = 3 }: { responsa
   );
 }
 
+/** Seletor de um único responsável (busca + criação), usado no composer de timelines. */
+export function AutorSelect({ value, onChange, placeholder = "Selecione o responsável…" }: { value: string; onChange: (nome: string) => void; placeholder?: string }) {
+  const { data: responsaveis = [] } = useResponsaveis();
+  const create = useCreateResponsavel();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [created, setCreated] = useState<Responsavel[]>([]);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const options = useMemo(
+    () => [...new Map([...responsaveis, ...created].map((responsavel) => [responsavel.id, responsavel])).values()],
+    [responsaveis, created],
+  );
+  const q = query.trim().toLowerCase();
+  const filtered = options.filter((r) => r.nome.toLowerCase().includes(q));
+  const exactMatch = options.some((r) => r.nome.toLowerCase() === q);
+  const canCreate = q.length > 0 && !exactMatch;
+
+  const select = (nome: string) => {
+    onChange(nome);
+    setQuery("");
+    setOpen(false);
+  };
+
+  const handleCreate = async () => {
+    const nome = query.trim();
+    if (!nome) return;
+    const novo = await create.mutateAsync(nome);
+    setCreated((current) => (current.some((responsavel) => responsavel.id === novo.id) ? current : [...current, novo]));
+    select(novo.nome);
+  };
+
+  return (
+    <div className="resp-select resp-select-single" ref={boxRef}>
+      <div className="resp-select-control" onClick={() => setOpen(true)}>
+        {value ? (
+          <span className="resp-chip" title={value}>
+            <RespAvatar nome={value} size={16} />
+            <span className="resp-chip-name">{value}</span>
+          </span>
+        ) : null}
+        <input
+          className="resp-select-input"
+          value={query}
+          placeholder={value ? "" : placeholder}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && canCreate) { e.preventDefault(); void handleCreate(); }
+          }}
+        />
+      </div>
+      {open && (
+        <div className="resp-select-menu">
+          {filtered.map((r) => (
+            <button
+              type="button"
+              key={r.id}
+              className={`resp-select-option${value === r.nome ? " selected" : ""}`}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => select(r.nome)}
+            >
+              <RespAvatar nome={r.nome} size={20} />
+              <span className="resp-select-option-name">{r.nome}</span>
+              {value === r.nome && <i className="ti ti-check" style={{ marginLeft: "auto", color: "var(--teal)" }} />}
+            </button>
+          ))}
+          {filtered.length === 0 && !canCreate && (
+            <div className="resp-select-empty">Nenhum responsável cadastrado.</div>
+          )}
+          {canCreate && (
+            <button
+              type="button"
+              className="resp-select-create"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => void handleCreate()}
+              disabled={create.isPending}
+            >
+              <i className="ti ti-plus" /> Novo responsável: <strong>“{query.trim()}”</strong>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Seletor dinâmico com múltipla seleção, busca e criação de novos responsáveis. */
 export function ResponsavelSelect({ value, onChange, inlineMenu = false }: { value: string[]; onChange: (ids: string[]) => void; inlineMenu?: boolean }) {
   const { data: responsaveis = [] } = useResponsaveis();
