@@ -4,7 +4,7 @@ import {
   useSensor, useSensors, type DragEndEvent, type DragStartEvent,
 } from "@dnd-kit/core";
 import {
-  PASSO_LABELS, STAGE_CONFIRMADO, STAGE_NEGOCIACAO, STAGE_ORDER, NEGOTIATION_STAGES, passoLabel, pipelineStage,
+  PASSO_LABELS, STAGE_CONFIRMADO, STAGE_CONTRATO, STAGE_NEGOCIACAO, STAGE_ORDER, NEGOTIATION_STAGES, passoLabel, pipelineStage,
   fmtBRL, normalizeStatus, statusLabel, statusBadgeClass, isDeclined, isConfirmedLead, STATUS_OPTIONS, respAvatar,
   useCreateLead, useDeleteLead, useLeads, useParticipants, usePendencias, useResponsaveis,
   useSetLeadResponsaveis, useUpdateLead, useUpdateParticipant, useCreateParticipant, useCreateLeadActivity, useLeadActivities, copyLeadHistoryToParticipant,
@@ -56,7 +56,7 @@ function ComercialDash() {
   const { data: pendencias = [] } = usePendencias();
   const ativos = leads.filter((l) => !isDeclined(l) && !isConfirmedLead(l));
   const declinados = leads.filter(isDeclined);
-  const contratos = ativos.filter((l) => pipelineStage(l.passo) === 6).length;
+  const contratos = ativos.filter((l) => pipelineStage(l.passo) === STAGE_CONTRATO).length;
   const emNegociacao = ativos.filter((l) => NEGOTIATION_STAGES.includes(l.passo)).length;
   const confirmedLeadNames = leads
     .filter(isConfirmedLead)
@@ -246,7 +246,7 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
       {creating && <LeadModal open onClose={() => setCreating(false)} />}
       {editingPart && <OrphanEditModal participant={editingPart} onClose={() => setEditingPart(null)} />}
       {assigningLead && <ResponsavelQuickModal lead={assigningLead} onClose={() => setAssigningLeadId(null)} />}
-      {promotingLead && <PromoteToParticipantModal lead={promotingLead} onClose={() => setPromotingLeadId(null)} onDone={() => update.mutate({ id: promotingLead.id, patch: { passo: 6, status: "em_negociacao" } })} />}
+      {promotingLead && <PromoteToParticipantModal lead={promotingLead} onClose={() => setPromotingLeadId(null)} onDone={() => update.mutate({ id: promotingLead.id, patch: { passo: STAGE_CONTRATO, status: "em_negociacao" } })} />}
     </div>
   );
 }
@@ -263,7 +263,7 @@ function PassoInlineSelect({ lead, hasParticipant, onPromotionRequired }: { lead
   const choose = (passo: number) => {
     setOpen(false);
     if (passo === DECLINADO_COL) { update.mutate({ id: lead.id, patch: { status: "declinado" } }); return; }
-    if (passo === 6 && !hasParticipant) { onPromotionRequired(); return; }
+    if (passo === STAGE_CONTRATO && !hasParticipant) { onPromotionRequired(); return; }
     update.mutate({ id: lead.id, patch: { passo, ...(declined ? { status: "abordado" } : {}) } });
   };
   return (
@@ -430,17 +430,17 @@ const PIPE_COLS = [DECLINADO_COL, ...STAGE_ORDER];
 const COL_COLOR: Record<number, string> = {
   [DECLINADO_COL]: "#c0392b",
   0: "#52b788", 1: "#5c6470", 2: "#534ab7",
-  [STAGE_NEGOCIACAO]: "#c77d2e", 6: "#d85a30", 7: "#0f6e56",
+  [STAGE_NEGOCIACAO]: "#c77d2e", 6: "#0f6e56", 7: "#d85a30",
 };
 const COL_ICON: Record<number, string> = {
   [DECLINADO_COL]: "ti-user-x",
   0: "ti-user-plus", 1: "ti-phone-call", 2: "ti-list-check",
-  [STAGE_NEGOCIACAO]: "ti-messages", 6: "ti-file-text", 7: "ti-circle-check",
+  [STAGE_NEGOCIACAO]: "ti-messages", 6: "ti-circle-check", 7: "ti-file-text",
 };
 const COL_NAME: Record<number, string> = {
   [DECLINADO_COL]: "Declinado",
   0: "Cadastro", 1: "Abordagem", 2: "Qualificação",
-  [STAGE_NEGOCIACAO]: "Negociação", 6: "Contrato", 7: "Confirmado",
+  [STAGE_NEGOCIACAO]: "Negociação", 6: "Confirmado", 7: "Contrato",
 };
 const COL_CODE: Record<number, string> = {
   [DECLINADO_COL]: "encerrado",
@@ -506,9 +506,9 @@ function PipelineTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: strin
       return;
     }
 
-    // A etapa Confirmado só existe depois que o registro de participante foi criado.
-    // Assim não há um card confirmado no Comercial sem a pessoa na Pré-viagem.
-    if (target === 6 && !participantNames.has(lead.nome.toLowerCase().trim())) {
+    // A etapa Contrato só existe depois que o registro de participante foi criado.
+    // Assim não há contrato no Comercial sem a pessoa na Pré-viagem.
+    if (target === STAGE_CONTRATO && !participantNames.has(lead.nome.toLowerCase().trim())) {
       setPromoteLead(lead);
       return;
     }
@@ -544,9 +544,9 @@ function PipelineTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: strin
             <PipeColumn
               key={s} stage={s}
               leads={s === DECLINADO_COL ? declinedLeads : activeLeads.filter((l) => pipelineStage(l.passo) === s)}
-              orphanParticipants={s === 6 ? orphanParticipants : []}
+              orphanParticipants={s === STAGE_CONTRATO ? orphanParticipants : []}
               collapsed={collapsed.has(s)} onToggle={() => toggleCollapse(s)}
-              activeId={activeId} onAdd={() => setModalStage(s === 6 ? STAGE_CONFIRMADO : s)} onDelete={(id) => del.mutate(id)}
+              activeId={activeId} onAdd={() => setModalStage(s === STAGE_CONTRATO ? STAGE_CONFIRMADO : s)} onDelete={(id) => del.mutate(id)}
               onEdit={(lead) => onOpenLead(lead.id)}
               onEditOrphan={(p) => onViewParticipant ? onViewParticipant(p.id) : setEditingOrphan(p)}
             />
@@ -560,7 +560,7 @@ function PipelineTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: strin
       </DndContext>
       {modalStage !== null && <LeadModal open onClose={() => setModalStage(null)} initialPasso={modalStage === DECLINADO_COL ? 1 : modalStage} />}
       {editingOrphan && <OrphanEditModal participant={editingOrphan} onClose={() => setEditingOrphan(null)} />}
-      {promoteLead && <PromoteToParticipantModal lead={promoteLead} onClose={() => setPromoteLead(null)} onDone={() => update.mutate({ id: promoteLead.id, patch: { passo: 6, status: "em_negociacao" } })} />}
+      {promoteLead && <PromoteToParticipantModal lead={promoteLead} onClose={() => setPromoteLead(null)} onDone={() => update.mutate({ id: promoteLead.id, patch: { passo: STAGE_CONTRATO, status: "em_negociacao" } })} />}
     </div>
   );
 }
@@ -605,7 +605,7 @@ function PipeColumn({ stage, leads, orphanParticipants = [], collapsed, onToggle
         {total === 0 && (
           <div className="pv-empty">
             <i className={`ti ${stage === DECLINADO_COL ? "ti-user-x" : "ti-inbox"}`} />
-            {isOver ? "Solte aqui" : stage === 6 ? "Pendente política" : "Vazio"}
+            {isOver ? "Solte aqui" : "Vazio"}
           </div>
         )}
         {stage !== DECLINADO_COL && <button className="add-lead" onClick={onAdd}><i className="ti ti-plus" /> adicionar</button>}
@@ -769,7 +769,7 @@ function LeadDetail({ id, onBack, onViewParticipant }: { id: string; onBack: () 
         </div>
         {alreadyParticipant
           ? <span className="badge badge-ok" style={{ flexShrink: 0 }}><i className="ti ti-user-check" /> Já é participante</span>
-          : pipelineStage(p.passo) === 6 && (
+          : pipelineStage(p.passo) === STAGE_CONTRATO && (
             <button className="btn-primary" style={{ fontSize: 12, padding: "7px 14px", flexShrink: 0 }} onClick={() => setPromote(true)}><i className="ti ti-user-plus" /> Criar participante</button>
           )}
       </div>
@@ -789,7 +789,7 @@ function LeadDetail({ id, onBack, onViewParticipant }: { id: string; onBack: () 
               value={String(pipelineStage(p.passo))}
               onChange={(v) => {
                 const passo = Number(v);
-                if (passo === 6 && !alreadyParticipant) { setPromote(true); return; }
+                if (passo === STAGE_CONTRATO && !alreadyParticipant) { setPromote(true); return; }
                 save({ passo });
               }}
               options={(STAGES.includes(pipelineStage(p.passo)) ? STAGES : [...STAGES, pipelineStage(p.passo)]).map((s) => ({ value: String(s), label: etapaLabel(s) }))}
@@ -825,7 +825,7 @@ function LeadDetail({ id, onBack, onViewParticipant }: { id: string; onBack: () 
       <ConfirmDialog open={confirmDecline} onClose={() => setConfirmDecline(false)} onConfirm={doDecline} title="Declinar lead" message={`Marcar ${p.nome} como declinado? Ele sai do funil ativo e dos indicadores de negociação, mas continua no histórico e pode ser reativado.`} confirmLabel="Declinar" />
       <ConfirmDialog open={confirmDel} onClose={() => setConfirmDel(false)} onConfirm={() => del.mutate(id, { onSuccess: onBack })} title="Excluir lead" message={`Tem certeza que deseja excluir ${p.nome}? Essa ação não pode ser desfeita — considere declinar em vez de excluir.`} confirmLabel="Excluir" />
       {promote && <PromoteToParticipantModal lead={p} onClose={() => setPromote(false)} onDone={(participantId) => {
-        save({ passo: 6, status: "em_negociacao" });
+        save({ passo: STAGE_CONTRATO, status: "em_negociacao" });
         onViewParticipant?.(participantId);
       }} />}
     </div>

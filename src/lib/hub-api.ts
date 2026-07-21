@@ -298,7 +298,7 @@ export function useCreateLead() {
   return useMutation({
     mutationFn: async (l: Partial<Lead>) => {
       const safeLead = enforceLeadWorkflowState(l);
-      if (safeLead.passo === 6 && !(await hasActiveParticipant(safeLead.nome))) {
+      if (safeLead.passo === STAGE_CONTRATO && !(await hasActiveParticipant(safeLead.nome))) {
         throw new Error("Crie o participante antes de mover este contato para Contrato.");
       }
       const { data, error } = await sb.from("leads_crm").insert(safeLead).select().single();
@@ -319,8 +319,8 @@ export function useUpdateLead() {
         if (currentError) throw currentError;
         safePatch = enforceLeadWorkflowState(patch, current);
         const nextPasso = safePatch.passo ?? current.passo;
-        const wasContracted = current.passo === 6 && normalizeStatus(current.status) !== "declinado";
-        const willBeContracted = nextPasso === 6 && normalizeStatus(safePatch.status ?? current.status) !== "declinado";
+        const wasContracted = current.passo === STAGE_CONTRATO && normalizeStatus(current.status) !== "declinado";
+        const willBeContracted = nextPasso === STAGE_CONTRATO && normalizeStatus(safePatch.status ?? current.status) !== "declinado";
         if (willBeContracted && !(await hasParticipantRecord(current.nome))) {
           throw new Error("Crie o participante antes de mover este contato para Contrato.");
         }
@@ -769,7 +769,8 @@ export function useUpdateMensagem() {
 // (ver `isDeclined`) — o `passo` de um lead declinado continua sendo a etapa real
 // em que ele estava.
 export const STAGE_NEGOCIACAO = 9;
-export const STAGE_CONFIRMADO = 7;
+export const STAGE_CONFIRMADO = 6;
+export const STAGE_CONTRATO = 7;
 /** Etapas removidas do funil visual; os registros históricos delas ficam agrupados em Negociação. */
 export const LEGACY_NEGOTIATION_STAGES = [3, 4, 5];
 export const PASSO_LABELS: Record<number, string> = {
@@ -779,8 +780,8 @@ export const PASSO_LABELS: Record<number, string> = {
   3: "P3 — Mapa enviado",
   4: "P4 — Voos sugeridos",
   5: "P5 — Go / No-go",
-  6: "P6 — Contrato",
-  7: "P7 — Confirmado",
+  6: "P6 — Confirmado",
+  7: "P7 — Contrato",
   [STAGE_NEGOCIACAO]: "Negociação",
 };
 /** Ordem visual das etapas no funil (kanban, filtros, seletores) — independente
@@ -828,7 +829,7 @@ export const normalizeStatus = (s: string | null | undefined): string => {
   if (STATUS_OPTIONS.some((o) => o.value === low)) return low;
   return s; // status desconhecido: exibe como veio
 };
-/** Status efetivo mostrado no CRM. P7 é a confirmação; fora de P7, "Confirmado"
+/** Status efetivo mostrado no CRM. P6 é a confirmação; fora de P6, "Confirmado"
  * é tratado como negociação até o registro ser persistido novamente. */
 export const effectiveLeadStatus = (lead: Pick<Lead, "passo" | "status">): string => {
   const status = normalizeStatus(lead.status);
@@ -928,8 +929,8 @@ async function mirrorLeadActivityToParticipants(leadId: string, activity: LeadAc
   // a timeline vinculada continua exibindo a nota comercial nesse intervalo.
   if (error && !isMissingCommercialTable(error)) return;
 }
-/** Regra única do funil: apenas P7 pode carregar o status Confirmado.
- * Ao confirmar, o lead vai para P7; ao retornar de P7, deixa de ser confirmado. */
+/** Regra única do funil: apenas P6 pode carregar o status Confirmado.
+ * Ao confirmar, o lead vai para P6; ao retornar de P6, deixa de ser confirmado. */
 export function enforceLeadWorkflowState<T extends Partial<Pick<Lead, "passo" | "status">>>(
   patch: T,
   current?: Pick<Lead, "passo" | "status">,
@@ -938,8 +939,8 @@ export function enforceLeadWorkflowState<T extends Partial<Pick<Lead, "passo" | 
   let passo = next.passo ?? current?.passo;
   let status = normalizeStatus(next.status ?? current?.status);
 
-  // Escolher explicitamente o status Confirmado sempre promove para P7. Já uma mudança
-  // de etapa para fora de P7 rebaixa o status, em vez de devolver o card ao P7.
+  // Escolher explicitamente o status Confirmado sempre promove para P6. Já uma mudança
+  // de etapa para fora de P6 rebaixa o status, em vez de devolver o card ao P6.
   if (patch.status !== undefined && normalizeStatus(patch.status) === "confirmado") passo = STAGE_CONFIRMADO;
   if (passo === STAGE_CONFIRMADO && status !== "declinado") status = "confirmado";
   if (passo !== undefined && passo !== STAGE_CONFIRMADO && status === "confirmado") status = "em_negociacao";

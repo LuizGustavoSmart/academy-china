@@ -1,8 +1,8 @@
--- P7 é o aceite verbal; P6 é o contrato assinado e a entrada na Pré-viagem.
+-- P6 é o aceite verbal; P7 é o contrato assinado e a entrada na Pré-viagem.
 -- Reconciliamos registros já existentes sem apagar nenhum lead ou participante.
 UPDATE public.leads_crm AS lead
-SET passo = 6, status = 'em_negociacao'
-WHERE lead.passo = 7
+SET passo = 7, status = 'em_negociacao'
+WHERE lead.passo = 6
   AND EXISTS (
     SELECT 1
     FROM public.participants AS participant
