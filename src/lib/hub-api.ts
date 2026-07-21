@@ -395,6 +395,40 @@ export function useCreateResponsavel() {
   });
 }
 
+export function useUpdateResponsavel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<Pick<Responsavel, "nome" | "cor" | "ativo">> }) => {
+      if (id.startsWith("legacy-")) throw new Error("Responsável legado não pode ser editado.");
+      const clean = { ...patch, ...(patch.nome !== undefined ? { nome: patch.nome.trim() } : {}) };
+      const { data, error } = await sb.from("responsaveis").update(clean).eq("id", id).select().single();
+      if (error) throw error;
+      return data as Responsavel;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["hub_responsaveis"] });
+      qc.invalidateQueries({ queryKey: ["hub_leads"] });
+    },
+  });
+}
+
+export function useDeleteResponsavel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (id.startsWith("legacy-")) throw new Error("Responsável legado não pode ser excluído.");
+      // Remove vínculos antes para evitar erro de FK caso não haja cascade.
+      await sb.from("lead_responsaveis").delete().eq("responsavel_id", id);
+      const { error } = await sb.from("responsaveis").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["hub_responsaveis"] });
+      qc.invalidateQueries({ queryKey: ["hub_leads"] });
+    },
+  });
+}
+
 /** Substitui o conjunto de responsáveis de um lead pelo array informado. */
 export function useSetLeadResponsaveis() {
   const qc = useQueryClient();

@@ -9,6 +9,7 @@ import { ViagemPage } from "@/components/hub/pages/Viagem";
 import { PendenciasList } from "@/components/hub/PendenciasList";
 import { AliancasPage } from "@/components/hub/pages/Aliancas";
 import { SincronizacaoPage } from "@/components/hub/pages/Sincronizacao";
+import { ConfiguracoesPage } from "@/components/hub/pages/Configuracoes";
 import { usePendencias } from "@/lib/hub-api";
 import menuLogo from "@/assets/china2026-academy-logo.png.asset.json";
 
@@ -105,7 +106,7 @@ export const Route = createFileRoute("/admin/")({
   component: Index,
 });
 
-type Tab = "dashboard" | "participantes" | "financeiro" | "comercial" | "preop" | "operacional" | "pendencias" | "aliancas" | "sincronizacao";
+type Tab = "dashboard" | "participantes" | "financeiro" | "comercial" | "preop" | "operacional" | "pendencias" | "aliancas" | "sincronizacao" | "config";
 
 const PAGE_META: Record<Tab, { title: string; sub: string }> = {
   dashboard: { title: "Dashboard", sub: "Visão geral da operação" },
@@ -117,6 +118,7 @@ const PAGE_META: Record<Tab, { title: string; sub: string }> = {
   pendencias: { title: "Pendências", sub: "Backlog unificado" },
   aliancas: { title: "Alianças estratégicas", sub: "Parceiros institucionais da Academy" },
   sincronizacao: { title: "Sincronização", sub: "Exportar CRM para Google Sheets" },
+  config: { title: "Configurações", sub: "Responsáveis e ajustes gerais" },
 };
 
 const SUBTABS: Record<string, { id: string; label: string; icon: string }[]> = {
@@ -213,6 +215,12 @@ function Index() {
               label="Sincronização"
               onClick={() => switchTab("sincronizacao")}
             />
+            <NavItem
+              active={tab === "config"}
+              icon="ti-settings"
+              label="Configurações"
+              onClick={() => switchTab("config")}
+            />
           </div>
           <div className="sidebar-toggle">
             <button className="toggle-btn" onClick={() => setCollapsed(!collapsed)}>
@@ -258,6 +266,7 @@ function Index() {
             {tab === "pendencias" && <PendenciasList title="Backlog unificado — todas as fases" />}
             {tab === "aliancas" && <AliancasPage sub={sub} />}
             {tab === "sincronizacao" && <SincronizacaoPage />}
+            {tab === "config" && <ConfiguracoesPage />}
           </div>
         </div>
       </div>
