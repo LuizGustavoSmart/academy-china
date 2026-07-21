@@ -298,8 +298,8 @@ export function useCreateLead() {
   return useMutation({
     mutationFn: async (l: Partial<Lead>) => {
       const safeLead = enforceLeadWorkflowState(l);
-      if (safeLead.passo === STAGE_CONFIRMADO && !(await hasActiveParticipant(safeLead.nome))) {
-        throw new Error("Crie o participante antes de confirmar este contato.");
+      if (safeLead.passo === 6 && !(await hasActiveParticipant(safeLead.nome))) {
+        throw new Error("Crie o participante antes de mover este contato para Contrato.");
       }
       const { data, error } = await sb.from("leads_crm").insert(safeLead).select().single();
       if (error) throw error;
@@ -319,18 +319,18 @@ export function useUpdateLead() {
         if (currentError) throw currentError;
         safePatch = enforceLeadWorkflowState(patch, current);
         const nextPasso = safePatch.passo ?? current.passo;
-        const wasConfirmed = current.passo === STAGE_CONFIRMADO && normalizeStatus(current.status) !== "declinado";
-        const willBeConfirmed = nextPasso === STAGE_CONFIRMADO && normalizeStatus(safePatch.status ?? current.status) !== "declinado";
-        if (willBeConfirmed && !(await hasParticipantRecord(current.nome))) {
-          throw new Error("Crie o participante antes de confirmar este contato.");
+        const wasContracted = current.passo === 6 && normalizeStatus(current.status) !== "declinado";
+        const willBeContracted = nextPasso === 6 && normalizeStatus(safePatch.status ?? current.status) !== "declinado";
+        if (willBeContracted && !(await hasParticipantRecord(current.nome))) {
+          throw new Error("Crie o participante antes de mover este contato para Contrato.");
         }
-        if (wasConfirmed && !willBeConfirmed) {
+        if (wasContracted && !willBeContracted) {
           const { error: removeError } = await sb.from("participants")
             .update({ status: "removido_comercial", updated_at: new Date().toISOString() })
             .eq("nome", current.nome);
           if (removeError) throw removeError;
         }
-        if (!wasConfirmed && willBeConfirmed) {
+        if (!wasContracted && willBeContracted) {
           const { error: reactivateError } = await sb.from("participants")
             .update({ status: "em_andamento", updated_at: new Date().toISOString() })
             .eq("nome", current.nome)
