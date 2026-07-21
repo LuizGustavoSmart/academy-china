@@ -83,6 +83,41 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_activities: {
+        Row: {
+          autor: string | null
+          conteudo: string
+          created_at: string
+          id: string
+          lead_id: string
+          tipo: string
+        }
+        Insert: {
+          autor?: string | null
+          conteudo: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          tipo?: string
+        }
+        Update: {
+          autor?: string | null
+          conteudo?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads_crm"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           created_at: string
@@ -229,6 +264,41 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      participant_activities: {
+        Row: {
+          autor: string | null
+          conteudo: string
+          created_at: string
+          id: string
+          participant_id: string
+          tipo: string
+        }
+        Insert: {
+          autor?: string | null
+          conteudo: string
+          created_at?: string
+          id?: string
+          participant_id: string
+          tipo?: string
+        }
+        Update: {
+          autor?: string | null
+          conteudo?: string
+          created_at?: string
+          id?: string
+          participant_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participant_activities_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       participants: {
         Row: {
