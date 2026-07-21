@@ -83,6 +83,74 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_activities: {
+        Row: {
+          autor: string | null
+          conteudo: string
+          created_at: string
+          id: string
+          lead_id: string
+          tipo: string
+        }
+        Insert: {
+          autor?: string | null
+          conteudo: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          tipo?: string
+        }
+        Update: {
+          autor?: string | null
+          conteudo?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads_crm"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_responsaveis: {
+        Row: {
+          created_at: string
+          lead_id: string
+          responsavel_id: string
+        }
+        Insert: {
+          created_at?: string
+          lead_id: string
+          responsavel_id: string
+        }
+        Update: {
+          created_at?: string
+          lead_id?: string
+          responsavel_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_responsaveis_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads_crm"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_responsaveis_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "responsaveis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           created_at: string
@@ -229,6 +297,41 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      participant_activities: {
+        Row: {
+          autor: string | null
+          conteudo: string
+          created_at: string
+          id: string
+          participant_id: string
+          tipo: string
+        }
+        Insert: {
+          autor?: string | null
+          conteudo: string
+          created_at?: string
+          id?: string
+          participant_id: string
+          tipo?: string
+        }
+        Update: {
+          autor?: string | null
+          conteudo?: string
+          created_at?: string
+          id?: string
+          participant_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participant_activities_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       participants: {
         Row: {
@@ -413,6 +516,33 @@ export type Database = {
         }
         Relationships: []
       }
+      responsaveis: {
+        Row: {
+          ativo: boolean
+          cor: string | null
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cor?: string | null
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cor?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       touchpoints: {
         Row: {
           created_at: string
@@ -453,7 +583,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      replace_lead_responsaveis: {
+        Args: { p_lead_id: string; p_responsavel_ids: string[] }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
