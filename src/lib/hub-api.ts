@@ -21,6 +21,7 @@ export type Participant = {
   quarto: string | null;
   tier: string;
   valor_pago: number;
+  parcelas: number;
   pagamento_status: string;
   contrato_status: string;
   seguro_status: string;

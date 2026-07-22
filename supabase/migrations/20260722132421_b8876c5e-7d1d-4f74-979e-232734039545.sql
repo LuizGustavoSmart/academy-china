@@ -1,0 +1,1 @@
+ALTER TABLE public.participants ADD COLUMN IF NOT EXISTS parcelas integer NOT NULL DEFAULT 1;
