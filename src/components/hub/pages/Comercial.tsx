@@ -52,19 +52,14 @@ function useEnsureDefaultResponsaveis() {
 
 function ComercialDash() {
   const { data: leads = [] } = useLeads();
-  const { data: parts = [] } = useParticipants();
   const { data: pendencias = [] } = usePendencias();
   const ativos = leads.filter((l) => !isDeclined(l) && !isConfirmedLead(l));
   const declinados = leads.filter(isDeclined);
   const contratos = ativos.filter((l) => pipelineStage(l.passo) === STAGE_CONTRATO).length;
   const emNegociacao = ativos.filter((l) => NEGOTIATION_STAGES.includes(l.passo)).length;
-  const confirmedLeadNames = leads
-    .filter(isConfirmedLead)
-    .map((lead) => lead.nome.toLowerCase().trim());
-  const paidParticipantNames = parts
-    .filter((participant) => participant.pagamento_status === "confirmado")
-    .map((participant) => participant.nome.toLowerCase().trim());
-  const confirmados = new Set([...confirmedLeadNames, ...paidParticipantNames]).size;
+  // Coerente com a coluna "Confirmado" do pipeline: apenas leads na etapa
+  // STAGE_CONFIRMADO e não declinados (mesma regra usada em PipelineTab).
+  const confirmados = leads.filter(isConfirmedLead).length;
   const pendOpen = pendencias.filter((p) => p.fase === "comercial" && p.status !== "resolvida").length;
   return (
     <div className="main">
