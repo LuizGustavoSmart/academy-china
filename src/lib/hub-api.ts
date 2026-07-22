@@ -43,6 +43,7 @@ export type Participant = {
   areas_interesse: string | null;
   empresa_site: string | null;
   voo_detalhes: Record<string, unknown> | null;
+  voo_volta_detalhes: Record<string, unknown> | null;
   form_id: string | null;
   form_synced_at: string | null;
 };

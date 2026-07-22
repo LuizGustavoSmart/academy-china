@@ -132,6 +132,27 @@ Deno.serve(async (req) => {
       }
     : null;
 
+  // Mesma lógica do voo de ida, para o trecho de volta respondido no formulário.
+  const vooVoltaDetalhes = payload.passagemComprada
+    ? {
+        comprada: str(payload.passagemComprada),
+        ...(payload.passagemComprada === "sim"
+          ? {
+              cia: str(payload.vooVoltaCia),
+              numero: str(payload.vooVoltaNumero),
+              classe: str(payload.vooVoltaClasse),
+              origem: str(payload.vooVoltaOrigem),
+              conexoes: str(payload.vooVoltaConexoes),
+              destino: str(payload.vooVoltaDestino),
+              data_embarque: str(payload.vooVoltaDataEmbarque),
+              partida: str(payload.vooVoltaPartida),
+              chegada: str(payload.vooVoltaChegada),
+              terminal: str(payload.vooVoltaTerminal),
+            }
+          : {}),
+      }
+    : null;
+
   const foto_url = await uploadFoto(admin, passaporte, body.foto_data_url);
 
   // ────────── identifica o participante confirmado correspondente ──────────
@@ -183,6 +204,7 @@ Deno.serve(async (req) => {
     restricoes_alimentares: alergiaAlimentar,
     alergias: alergiaMedicamento,
     voo_detalhes: vooDetalhes,
+    voo_volta_detalhes: vooVoltaDetalhes,
     form_id: body.form_id ?? null,
     form_synced_at: new Date().toISOString(),
     ...(foto_url ? { foto_url } : {}),

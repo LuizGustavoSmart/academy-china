@@ -202,6 +202,7 @@ export type Database = {
           tamanho_blazer: string | null
           foto_url: string | null
           voo_detalhes: Json | null
+          voo_volta_detalhes: Json | null
           form_id: string | null
           form_synced_at: string | null
           quarto: string | null
@@ -246,6 +247,7 @@ export type Database = {
           tamanho_blazer?: string | null
           foto_url?: string | null
           voo_detalhes?: Json | null
+          voo_volta_detalhes?: Json | null
           form_id?: string | null
           form_synced_at?: string | null
           quarto?: string | null
@@ -290,6 +292,7 @@ export type Database = {
           tamanho_blazer?: string | null
           foto_url?: string | null
           voo_detalhes?: Json | null
+          voo_volta_detalhes?: Json | null
           form_id?: string | null
           form_synced_at?: string | null
           quarto?: string | null

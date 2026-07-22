@@ -314,9 +314,17 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
       </div>
       {p.voo_detalhes && (
         <div className="panel" style={{ marginBottom: 20 }}>
-          <div className="panel-header"><i className="ti ti-plane" /> Passagem aérea (respondida no formulário)</div>
+          <div className="panel-header"><i className="ti ti-plane" /> Passagem de ida (respondida no formulário)</div>
           <div className="panel-body">
             <VooDetalhesTable detalhes={p.voo_detalhes} />
+          </div>
+        </div>
+      )}
+      {p.voo_volta_detalhes && (
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <div className="panel-header"><i className="ti ti-plane" /> Passagem de volta (respondida no formulário)</div>
+          <div className="panel-body">
+            <VooDetalhesTable detalhes={p.voo_volta_detalhes} />
           </div>
         </div>
       )}
