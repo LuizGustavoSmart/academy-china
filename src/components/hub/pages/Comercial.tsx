@@ -648,20 +648,27 @@ function LeadCardDraggable({ lead, hidden, onDelete, onEdit }: { lead: Lead; hid
 
 function LeadCardInner({ lead, overlay, onDelete, onEdit }: { lead: Lead; overlay?: boolean; onDelete?: () => void; onEdit?: () => void }) {
   const { initials, color } = respAvatar(lead.nome);
+  const { data: participants = [] } = useParticipants();
+  const matchPart = participants.find((p) => p.nome.toLowerCase().trim() === lead.nome.toLowerCase().trim());
+  const cargo = lead.cargo || matchPart?.cargo || "";
+  const empresa = lead.empresa || matchPart?.empresa || "";
+  const cidade = lead.cidade || matchPart?.cidade || "";
   const body = (
     <>
       {onDelete && (
         <button className="lead-card-del" onClick={(e) => { e.stopPropagation(); onDelete(); }} onPointerDown={(e) => e.stopPropagation()} title="Excluir"><i className="ti ti-x" /></button>
       )}
       <div className="pv-card-head">
-        <span className="pv-avatar" style={{ background: color }}>{initials}</span>
+        {matchPart?.foto_url
+          ? <img src={matchPart.foto_url} alt={lead.nome} className="pv-avatar" style={{ objectFit: "cover" }} />
+          : <span className="pv-avatar" style={{ background: color }}>{initials}</span>}
         <div className="pv-card-id">
           <div className="pv-card-name">
             {onEdit && !overlay
               ? <button className="p-link pv-name-link" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onEdit(); }}>{lead.nome}</button>
               : lead.nome}
           </div>
-          <div className="pv-card-meta">{[lead.cargo, lead.empresa || lead.cidade].filter(Boolean).join(" · ") || "—"}</div>
+          <div className="pv-card-meta">{[cargo, empresa || cidade].filter(Boolean).join(" · ") || "—"}</div>
         </div>
       </div>
       <div className="ck-row">
