@@ -339,6 +339,10 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
               <span style={{ color: "var(--text3)" }}>Valor (R$)</span>
               <EditableField value={String(p.valor_pago)} onSave={(v) => save({ valor_pago: Number(v) || 0 })} />
             </div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 12 }}>
+              <span style={{ color: "var(--text3)" }}>Parcelas (x)</span>
+              <EditableField value={String(p.parcelas ?? 1)} onSave={(v) => save({ parcelas: Math.max(1, Number(v) || 1) })} />
+            </div>
             <StatusRow label="Pagamento" field="pagamento_status" value={p.pagamento_status} onSave={save} options={["pendente","confirmado"]} />
             <StatusRow label="Contrato" field="contrato_status" value={p.contrato_status} onSave={save} options={["pendente","assinado"]} />
           </div>
