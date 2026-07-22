@@ -52,22 +52,28 @@ function useEnsureDefaultResponsaveis() {
 
 function ComercialDash() {
   const { data: leads = [] } = useLeads();
+  const { data: participants = [] } = useParticipants();
   const { data: pendencias = [] } = usePendencias();
-  const ativos = leads.filter((l) => !isDeclined(l) && !isConfirmedLead(l));
+  // Métricas espelham exatamente a contagem das colunas do Pipeline:
+  // usam pipelineStage(passo) e excluem apenas declinados; Contrato ainda
+  // soma participantes órfãos (sem lead correspondente), como na coluna P7.
+  const naoDeclinados = leads.filter((l) => !isDeclined(l));
+  const inStage = (s: number) => naoDeclinados.filter((l) => pipelineStage(l.passo) === s).length;
+  const leadNames = new Set(leads.map((l) => l.nome.toLowerCase().trim()));
+  const orphanParticipants = participants.filter((p) => !leadNames.has(p.nome.toLowerCase().trim()));
   const declinados = leads.filter(isDeclined);
-  const contratos = ativos.filter((l) => pipelineStage(l.passo) === STAGE_CONTRATO).length;
-  const emNegociacao = ativos.filter((l) => NEGOTIATION_STAGES.includes(l.passo)).length;
-  // Coerente com a coluna "Confirmado" do pipeline: apenas leads na etapa
-  // STAGE_CONFIRMADO e não declinados (mesma regra usada em PipelineTab).
-  const confirmados = leads.filter(isConfirmedLead).length;
+  const confirmados = inStage(STAGE_CONFIRMADO);
+  const contratos = inStage(STAGE_CONTRATO) + orphanParticipants.length;
+  const emNegociacao = naoDeclinados.filter((l) => NEGOTIATION_STAGES.includes(pipelineStage(l.passo))).length;
+  const ativos = naoDeclinados.length;
   const pendOpen = pendencias.filter((p) => p.fase === "comercial" && p.status !== "resolvida").length;
   return (
     <div className="main">
       <div className="metrics" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))" }}>
-        <Metric icon="ti-users" label="Leads ativos" value={String(ativos.length)} sub="ainda no funil comercial" />
-        <Metric icon="ti-check" label="Confirmados" value={String(confirmados)} sub="leads e participantes, sem duplicar" cls="metric-ok" />
+        <Metric icon="ti-users" label="Leads ativos" value={String(ativos)} sub="ainda no funil comercial" />
+        <Metric icon="ti-check" label="Confirmados" value={String(confirmados)} sub="coluna P6 do pipeline" cls="metric-ok" />
         <Metric icon="ti-trending-up" label="Em negociação" value={String(emNegociacao)} sub="etapa Negociação" cls="metric-warn" />
-        <Metric icon="ti-file-text" label="Contratos" value={String(contratos)} sub="etapa Contrato" cls="metric-warn" />
+        <Metric icon="ti-file-text" label="Contratos" value={String(contratos)} sub="coluna P7 do pipeline" cls="metric-warn" />
         <Metric icon="ti-user-x" label="Leads declinados" value={String(declinados.length)} sub="recusaram / desistiram" cls="metric-danger" />
         <Metric icon="ti-currency-dollar" label="Ticket médio" value={fmtBRL(107250)} sub="R$ 99k–R$ 115,5k" />
         <Metric icon="ti-alert-circle" label="Pendências" value={String(pendOpen)} sub="para operacionalizar" cls="metric-danger" />
