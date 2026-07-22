@@ -376,7 +376,6 @@ export type Database = {
           uso_imagem_status: string
           valor_pago: number
           voo_detalhes: Json | null
-          voo_volta_detalhes: Json | null
           voo_ida_status: string
           voo_volta_status: string
         }
@@ -422,7 +421,6 @@ export type Database = {
           uso_imagem_status?: string
           valor_pago?: number
           voo_detalhes?: Json | null
-          voo_volta_detalhes?: Json | null
           voo_ida_status?: string
           voo_volta_status?: string
         }
@@ -468,7 +466,6 @@ export type Database = {
           uso_imagem_status?: string
           valor_pago?: number
           voo_detalhes?: Json | null
-          voo_volta_detalhes?: Json | null
           voo_ida_status?: string
           voo_volta_status?: string
         }
