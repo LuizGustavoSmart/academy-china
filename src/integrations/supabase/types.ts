@@ -359,6 +359,7 @@ export type Database = {
           observacoes_medicas: string | null
           origem: string | null
           pagamento_status: string
+          parcelas: number
           passaporte: string | null
           passaporte_emissao: string | null
           passaporte_validade: string | null
@@ -404,6 +405,7 @@ export type Database = {
           observacoes_medicas?: string | null
           origem?: string | null
           pagamento_status?: string
+          parcelas?: number
           passaporte?: string | null
           passaporte_emissao?: string | null
           passaporte_validade?: string | null
@@ -449,6 +451,7 @@ export type Database = {
           observacoes_medicas?: string | null
           origem?: string | null
           pagamento_status?: string
+          parcelas?: number
           passaporte?: string | null
           passaporte_emissao?: string | null
           passaporte_validade?: string | null
