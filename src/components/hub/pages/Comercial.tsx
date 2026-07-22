@@ -109,6 +109,7 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
   const [assigningLeadId, setAssigningLeadId] = useState<string | null>(null);
   const [promotingLeadId, setPromotingLeadId] = useState<string | null>(null);
   const update = useUpdateLead();
+  const createLead = useCreateLead();
 
   const [q, setQ] = useState("");
   const [view, setView] = useState<View>("ativos");
@@ -118,6 +119,27 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
 
   const leadNames = new Set(leads.map((l) => l.nome.toLowerCase().trim()));
   const orphanParticipants = participants.filter((p) => !leadNames.has(p.nome.toLowerCase().trim()));
+
+  // Auto-provisiona leads para participantes órfãos (ex.: vindos do formulário público)
+  // para que apareçam editáveis na mesma linha que os demais confirmados.
+  const provisioning = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    orphanParticipants.forEach((p) => {
+      if (provisioning.current.has(p.id)) return;
+      provisioning.current.add(p.id);
+      createLead.mutate({
+        nome: p.nome,
+        empresa: p.empresa ?? "",
+        email: p.email ?? "",
+        telefone: p.telefone ?? "",
+        cidade: p.cidade ?? "",
+        cargo: p.cargo ?? "",
+        passo: STAGE_CONFIRMADO,
+        status: "em_negociacao",
+        cadastrado_por: p.origem ?? "Formulário",
+      });
+    });
+  }, [orphanParticipants.map((p) => p.id).join(",")]);
 
   const term = q.trim().toLowerCase();
   const matchText = (fields: (string | null | undefined)[]) =>
