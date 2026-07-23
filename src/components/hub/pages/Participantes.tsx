@@ -34,95 +34,212 @@ function photoDownloadUrl(p: Participant): string {
   return `${p.foto_url}${p.foto_url!.includes("?") ? "&" : "?"}download=${filename}`;
 }
 
-const fmtDate = (iso: string | null) => (iso ? iso.split("-").reverse().join("/") : "—");
-
-const fmtDateTime = (ts: string) => {
-  const d = new Date(ts);
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} · ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-};
-
 const vd = (p: Participant, campo: string, volta = false) => {
   const detalhes = volta ? p.voo_volta_detalhes : p.voo_detalhes;
   const v = detalhes?.[campo];
   return v == null ? "" : String(v);
 };
 
-/** Exporta todos os participantes com todos os campos do formulário — a mesma base de dados
- * exibida na tabela, sempre em dia porque lê direto do estado já sincronizado com o Supabase. */
-function exportarPlanilha(list: Participant[]) {
+/** yyyy-mm-dd sem componente de hora → data "pura" em UTC, para o serial do Excel bater
+ * com o dia exibido independente do fuso de quem abre o arquivo. */
+const dataParaExcel = (iso: string | null | undefined): Date | null => {
+  if (!iso) return null;
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(Date.UTC(y, m - 1, d));
+};
+
+/** Timestamp com hora → preserva o horário local "disfarçado" de UTC, já que o Excel
+ * calcula o serial a partir de getTime() sem qualquer ajuste de fuso. */
+const dataHoraParaExcel = (ts: string): Date => {
+  const d = new Date(ts);
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes()));
+};
+
+type ColunaParticipante = {
+  header: string;
+  key: string;
+  width: number;
+  kind?: "date" | "datetime" | "currency";
+  get: (p: Participant) => string | number | null;
+};
+
+const COLUNAS_PARTICIPANTE: ColunaParticipante[] = [
+  { header: "Nome", key: "nome", width: 20, get: (p) => p.nome ?? "" },
+  { header: "Nome completo", key: "nome_completo", width: 24, get: (p) => p.nome_completo ?? "" },
+  { header: "Cargo", key: "cargo", width: 20, get: (p) => p.cargo ?? "" },
+  { header: "Empresa", key: "empresa", width: 20, get: (p) => p.empresa ?? "" },
+  { header: "Perfil da empresa", key: "empresa_perfil", width: 32, get: (p) => p.empresa_perfil ?? "" },
+  { header: "Áreas de interesse", key: "areas_interesse", width: 32, get: (p) => p.areas_interesse ?? "" },
+  { header: "Site da empresa", key: "empresa_site", width: 24, get: (p) => p.empresa_site ?? "" },
+  { header: "Cidade", key: "cidade", width: 18, get: (p) => p.cidade ?? "" },
+  { header: "E-mail", key: "email", width: 26, get: (p) => p.email ?? "" },
+  { header: "WhatsApp", key: "telefone", width: 16, get: (p) => p.telefone ?? "" },
+  { header: "Nacionalidade", key: "nacionalidade", width: 16, get: (p) => p.nacionalidade ?? "" },
+  { header: "Nascimento", key: "data_nascimento", width: 14, kind: "date", get: (p) => p.data_nascimento },
+  { header: "Passaporte", key: "passaporte", width: 16, get: (p) => p.passaporte ?? "" },
+  {
+    header: "Passaporte — emissão",
+    key: "passaporte_emissao",
+    width: 14,
+    kind: "date",
+    get: (p) => p.passaporte_emissao,
+  },
+  {
+    header: "Passaporte — validade",
+    key: "passaporte_validade",
+    width: 14,
+    kind: "date",
+    get: (p) => p.passaporte_validade,
+  },
+  { header: "Tipo sanguíneo", key: "tipo_sanguineo", width: 12, get: (p) => p.tipo_sanguineo ?? "" },
+  {
+    header: "Restrições alimentares",
+    key: "restricoes_alimentares",
+    width: 22,
+    get: (p) => p.restricoes_alimentares ?? "",
+  },
+  { header: "Alergias", key: "alergias", width: 22, get: (p) => p.alergias ?? "" },
+  {
+    header: "Observações médicas",
+    key: "observacoes_medicas",
+    width: 26,
+    get: (p) => p.observacoes_medicas ?? "",
+  },
+  { header: "Medicamentos", key: "medicamentos", width: 20, get: (p) => p.medicamentos ?? "" },
+  {
+    header: "Contato de emergência",
+    key: "contato_emergencia",
+    width: 24,
+    get: (p) => p.contato_emergencia ?? "",
+  },
+  { header: "Camisa", key: "tamanho_camisa", width: 10, get: (p) => p.tamanho_camisa ?? "" },
+  { header: "Blazer", key: "tamanho_blazer", width: 10, get: (p) => p.tamanho_blazer ?? "" },
+  { header: "Foto enviada", key: "foto", width: 12, get: (p) => (p.foto_url ? "Sim" : "Não") },
+  { header: "Quarto", key: "quarto", width: 12, get: (p) => p.quarto ?? "" },
+  { header: "Seguro viagem", key: "seguro_status", width: 14, get: (p) => p.seguro_status ?? "" },
+  { header: "Uso de imagem", key: "uso_imagem_status", width: 14, get: (p) => p.uso_imagem_status ?? "" },
+  {
+    header: "Passagem comprada",
+    key: "passagem_comprada",
+    width: 16,
+    get: (p) => (vd(p, "comprada") === "sim" ? "Sim" : vd(p, "comprada") === "nao" ? "Não" : ""),
+  },
+  { header: "Compra via", key: "compra_via", width: 16, get: (p) => vd(p, "empresa_compra") },
+  { header: "Ida — status", key: "voo_ida_status", width: 14, get: (p) => p.voo_ida_status ?? "" },
+  { header: "Ida — Cia aérea", key: "ida_cia", width: 16, get: (p) => vd(p, "cia") },
+  { header: "Ida — Voo", key: "ida_numero", width: 12, get: (p) => vd(p, "numero") },
+  { header: "Ida — Classe", key: "ida_classe", width: 12, get: (p) => vd(p, "classe") },
+  { header: "Ida — Origem", key: "ida_origem", width: 14, get: (p) => vd(p, "origem") },
+  { header: "Ida — Conexões", key: "ida_conexoes", width: 16, get: (p) => vd(p, "conexoes") },
+  { header: "Ida — Destino", key: "ida_destino", width: 14, get: (p) => vd(p, "destino") },
+  {
+    header: "Ida — Embarque",
+    key: "ida_embarque",
+    width: 14,
+    kind: "date",
+    get: (p) => vd(p, "data_embarque") || null,
+  },
+  { header: "Ida — Partida", key: "ida_partida", width: 12, get: (p) => vd(p, "partida") },
+  { header: "Ida — Chegada", key: "ida_chegada", width: 12, get: (p) => vd(p, "chegada") },
+  { header: "Ida — Terminal", key: "ida_terminal", width: 12, get: (p) => vd(p, "terminal") },
+  { header: "Volta — status", key: "voo_volta_status", width: 14, get: (p) => p.voo_volta_status ?? "" },
+  { header: "Volta — Cia aérea", key: "volta_cia", width: 16, get: (p) => vd(p, "cia", true) },
+  { header: "Volta — Voo", key: "volta_numero", width: 12, get: (p) => vd(p, "numero", true) },
+  { header: "Volta — Classe", key: "volta_classe", width: 12, get: (p) => vd(p, "classe", true) },
+  { header: "Volta — Origem", key: "volta_origem", width: 14, get: (p) => vd(p, "origem", true) },
+  { header: "Volta — Conexões", key: "volta_conexoes", width: 16, get: (p) => vd(p, "conexoes", true) },
+  { header: "Volta — Destino", key: "volta_destino", width: 14, get: (p) => vd(p, "destino", true) },
+  {
+    header: "Volta — Embarque",
+    key: "volta_embarque",
+    width: 14,
+    kind: "date",
+    get: (p) => vd(p, "data_embarque", true) || null,
+  },
+  { header: "Volta — Partida", key: "volta_partida", width: 12, get: (p) => vd(p, "partida", true) },
+  { header: "Volta — Chegada", key: "volta_chegada", width: 12, get: (p) => vd(p, "chegada", true) },
+  { header: "Volta — Terminal", key: "volta_terminal", width: 12, get: (p) => vd(p, "terminal", true) },
+  { header: "Tier", key: "tier", width: 12, get: (p) => p.tier ?? "" },
+  { header: "Valor pago (R$)", key: "valor_pago", width: 16, kind: "currency", get: (p) => p.valor_pago ?? 0 },
+  { header: "Parcelas", key: "parcelas", width: 10, get: (p) => p.parcelas ?? "" },
+  { header: "Pagamento", key: "pagamento_status", width: 14, get: (p) => p.pagamento_status ?? "" },
+  { header: "Contrato", key: "contrato_status", width: 14, get: (p) => p.contrato_status ?? "" },
+  { header: "Status geral", key: "status", width: 14, get: (p) => p.status ?? "" },
+  { header: "Origem do cadastro", key: "origem", width: 16, get: (p) => p.origem ?? "" },
+  { header: "Observações", key: "observacoes", width: 32, get: (p) => p.observacoes ?? "" },
+  { header: "Cadastrado em", key: "created_at", width: 18, kind: "datetime", get: (p) => p.created_at },
+];
+
+const COR_MARCA = "FFC0392B";
+const COR_MARCA_ESCURA = "FF922017";
+
+/** Gera e baixa a planilha .xlsx com todos os campos dos participantes, com cabeçalho fixo,
+ * filtro automático, larguras por coluna e zebra listrada — sempre em dia porque lê direto do
+ * estado já sincronizado com o Supabase (a mesma base de dados exibida na tabela). */
+async function exportarPlanilha(list: Participant[]) {
   if (!list.length) return;
-  const cols: [string, (p: Participant) => string][] = [
-    ["Nome", (p) => p.nome ?? ""],
-    ["Nome completo", (p) => p.nome_completo ?? ""],
-    ["Cargo", (p) => p.cargo ?? ""],
-    ["Empresa", (p) => p.empresa ?? ""],
-    ["Perfil da empresa", (p) => p.empresa_perfil ?? ""],
-    ["Áreas de interesse", (p) => p.areas_interesse ?? ""],
-    ["Site da empresa", (p) => p.empresa_site ?? ""],
-    ["Cidade", (p) => p.cidade ?? ""],
-    ["E-mail", (p) => p.email ?? ""],
-    ["WhatsApp", (p) => p.telefone ?? ""],
-    ["Nacionalidade", (p) => p.nacionalidade ?? ""],
-    ["Nascimento", (p) => fmtDate(p.data_nascimento)],
-    ["Passaporte", (p) => p.passaporte ?? ""],
-    ["Passaporte — emissão", (p) => fmtDate(p.passaporte_emissao)],
-    ["Passaporte — validade", (p) => fmtDate(p.passaporte_validade)],
-    ["Tipo sanguíneo", (p) => p.tipo_sanguineo ?? ""],
-    ["Restrições alimentares", (p) => p.restricoes_alimentares ?? ""],
-    ["Alergias", (p) => p.alergias ?? ""],
-    ["Observações médicas", (p) => p.observacoes_medicas ?? ""],
-    ["Medicamentos", (p) => p.medicamentos ?? ""],
-    ["Contato de emergência", (p) => p.contato_emergencia ?? ""],
-    ["Camisa", (p) => p.tamanho_camisa ?? ""],
-    ["Blazer", (p) => p.tamanho_blazer ?? ""],
-    ["Foto enviada", (p) => (p.foto_url ? "Sim" : "Não")],
-    ["Quarto", (p) => p.quarto ?? ""],
-    ["Seguro viagem", (p) => p.seguro_status ?? ""],
-    ["Uso de imagem", (p) => p.uso_imagem_status ?? ""],
-    ["Passagem comprada", (p) => (vd(p, "comprada") === "sim" ? "Sim" : vd(p, "comprada") === "nao" ? "Não" : "")],
-    ["Compra via", (p) => vd(p, "empresa_compra")],
-    ["Ida — status", (p) => p.voo_ida_status ?? ""],
-    ["Ida — Cia aérea", (p) => vd(p, "cia")],
-    ["Ida — Voo", (p) => vd(p, "numero")],
-    ["Ida — Classe", (p) => vd(p, "classe")],
-    ["Ida — Origem", (p) => vd(p, "origem")],
-    ["Ida — Conexões", (p) => vd(p, "conexoes")],
-    ["Ida — Destino", (p) => vd(p, "destino")],
-    ["Ida — Embarque", (p) => vd(p, "data_embarque")],
-    ["Ida — Partida", (p) => vd(p, "partida")],
-    ["Ida — Chegada", (p) => vd(p, "chegada")],
-    ["Ida — Terminal", (p) => vd(p, "terminal")],
-    ["Volta — status", (p) => p.voo_volta_status ?? ""],
-    ["Volta — Cia aérea", (p) => vd(p, "cia", true)],
-    ["Volta — Voo", (p) => vd(p, "numero", true)],
-    ["Volta — Classe", (p) => vd(p, "classe", true)],
-    ["Volta — Origem", (p) => vd(p, "origem", true)],
-    ["Volta — Conexões", (p) => vd(p, "conexoes", true)],
-    ["Volta — Destino", (p) => vd(p, "destino", true)],
-    ["Volta — Embarque", (p) => vd(p, "data_embarque", true)],
-    ["Volta — Partida", (p) => vd(p, "partida", true)],
-    ["Volta — Chegada", (p) => vd(p, "chegada", true)],
-    ["Volta — Terminal", (p) => vd(p, "terminal", true)],
-    ["Tier", (p) => p.tier ?? ""],
-    ["Valor pago (R$)", (p) => String(p.valor_pago ?? "")],
-    ["Parcelas", (p) => String(p.parcelas ?? "")],
-    ["Pagamento", (p) => p.pagamento_status ?? ""],
-    ["Contrato", (p) => p.contrato_status ?? ""],
-    ["Status geral", (p) => p.status ?? ""],
-    ["Origem do cadastro", (p) => p.origem ?? ""],
-    ["Observações", (p) => p.observacoes ?? ""],
-    ["Cadastrado em", (p) => fmtDateTime(p.created_at)],
-  ];
-  const esc = (v: string) => `"${(v ?? "").replace(/"/g, '""')}"`;
-  const linhas = [
-    cols.map(([h]) => esc(h)).join(";"),
-    ...list.map((p) => cols.map(([, fn]) => esc(fn(p))).join(";")),
-  ];
-  const blob = new Blob(["﻿" + linhas.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const { default: ExcelJS } = await import("exceljs");
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Academy China 2026";
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet("Participantes", {
+    views: [{ state: "frozen", ySplit: 1 }],
+    properties: { tabColor: { argb: COR_MARCA } },
+  });
+
+  ws.columns = COLUNAS_PARTICIPANTE.map((c) => ({ header: c.header, key: c.key, width: c.width }));
+
+  list.forEach((p) => {
+    const linha: Record<string, unknown> = {};
+    COLUNAS_PARTICIPANTE.forEach((c) => {
+      const raw = c.get(p);
+      if (c.kind === "date") linha[c.key] = dataParaExcel(raw as string);
+      else if (c.kind === "datetime") linha[c.key] = dataHoraParaExcel(raw as string);
+      else linha[c.key] = raw;
+    });
+    ws.addRow(linha);
+  });
+
+  COLUNAS_PARTICIPANTE.forEach((c, i) => {
+    const col = ws.getColumn(i + 1);
+    if (c.kind === "date") col.numFmt = "dd/mm/yyyy";
+    else if (c.kind === "datetime") col.numFmt = "dd/mm/yyyy hh:mm";
+    else if (c.kind === "currency") col.numFmt = '"R$" #,##0.00';
+  });
+
+  const headerRow = ws.getRow(1);
+  headerRow.height = 24;
+  headerRow.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COR_MARCA } };
+    cell.alignment = { vertical: "middle", horizontal: "left" };
+    cell.border = { bottom: { style: "medium", color: { argb: COR_MARCA_ESCURA } } };
+  });
+
+  for (let i = 2; i <= list.length + 1; i++) {
+    const row = ws.getRow(i);
+    row.height = 18;
+    const fundo = i % 2 === 0 ? "FFF7F6F3" : "FFFFFFFF";
+    row.eachCell({ includeEmpty: true }, (cell) => {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fundo } };
+      cell.border = { bottom: { style: "thin", color: { argb: "FFE5E2DC" } } };
+      cell.alignment = { vertical: "middle" };
+      cell.font = { color: { argb: "FF1A1A18" }, size: 10.5 };
+    });
+  }
+
+  ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: COLUNAS_PARTICIPANTE.length } };
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `participantes-academy-china-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `participantes-academy-china-${new Date().toISOString().slice(0, 10)}.xlsx`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -149,6 +266,7 @@ export function ParticipantesPage({ openId, setOpenId }: { openId: string | null
   const list = all.filter((p) => p.contrato_status === "assinado" || p.origem === "formulario");
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [exportando, setExportando] = useState(false);
 
   if (openId) {
     // Busca em `all`, não em `list`: participantes recém-criados (ex.: pelo formulário) ainda
@@ -177,10 +295,17 @@ export function ParticipantesPage({ openId, setOpenId }: { openId: string | null
           <button
             className="btn-secondary"
             style={{ fontSize: 12, padding: "7px 14px" }}
-            onClick={() => exportarPlanilha(list)}
-            disabled={list.length === 0}
+            onClick={async () => {
+              setExportando(true);
+              try {
+                await exportarPlanilha(list);
+              } finally {
+                setExportando(false);
+              }
+            }}
+            disabled={list.length === 0 || exportando}
           >
-            <i className="ti ti-download" /> Baixar planilha
+            <i className={exportando ? "ti ti-loader-2" : "ti ti-download"} /> {exportando ? "Gerando planilha…" : "Baixar planilha"}
           </button>
           {selectedWithPhoto.length > 0 && (
             <button
