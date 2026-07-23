@@ -106,8 +106,20 @@ Deno.serve(async (req) => {
     .filter(Boolean)
     .join(" · ") || null;
 
-  const alergiaAlimentar = payload.alergiaAlimentar === "sim" ? str(payload.alergiaAlimentarDetalhe) : null;
-  const alergiaMedicamento = payload.alergiaMedicamento === "sim" ? str(payload.alergiaMedicamentoDetalhe) : null;
+  // "Nenhuma" grava a resposta explícita "não tenho" — null continua reservado para quem ainda
+  // não respondeu essa etapa. Sem essa distinção, os dois casos ficam indistinguíveis no CRM.
+  const alergiaAlimentar =
+    payload.alergiaAlimentar === "sim"
+      ? str(payload.alergiaAlimentarDetalhe) ?? "Sim"
+      : payload.alergiaAlimentar === "nao"
+        ? "Nenhuma"
+        : null;
+  const alergiaMedicamento =
+    payload.alergiaMedicamento === "sim"
+      ? str(payload.alergiaMedicamentoDetalhe) ?? "Sim"
+      : payload.alergiaMedicamento === "nao"
+        ? "Nenhuma"
+        : null;
 
   // Guarda mesmo quando a resposta é "não comprou ainda" — senão o painel de voo simplesmente
   // não aparece pra quem respondeu isso, dando a impressão de que a etapa não foi respondida.

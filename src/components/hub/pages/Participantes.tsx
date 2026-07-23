@@ -26,6 +26,15 @@ function labelStatus(s: string) {
   return ({ confirmado: "Confirmado", pendente: "Pendente", em_andamento: "Em andamento", contratado: "Contratado" } as any)[s] ?? s;
 }
 
+/** null/"" = ainda não respondeu essa etapa do formulário (alguns registros mais antigos, sem
+ * origem no formulário, gravam "" em vez de null — tratamos os dois como "não informado");
+ * "Nenhuma" = respondeu que não tem restrição; qualquer outro texto = respondeu que tem, com o detalhe. */
+function restricaoBadge(v: string | null) {
+  if (!v) return <span className="badge badge-neutral">Não informado</span>;
+  if (v === "Nenhuma") return <span className="badge badge-ok">Nenhuma</span>;
+  return <span className="badge badge-warn">{v}</span>;
+}
+
 // O `download` do HTML não força nada em recurso de outra origem (o storage do Supabase é
 // outro domínio) — por isso o parâmetro `?download`, que o Supabase Storage entende
 // nativamente (em URL pública ou assinada) e responde com Content-Disposition: attachment.
@@ -39,6 +48,13 @@ const vd = (p: Participant, campo: string, volta = false) => {
   const v = detalhes?.[campo];
   return v == null ? "" : String(v);
 };
+
+/** O formulário grava "Nenhuma" quando o participante respondeu explicitamente que não tem —
+ * null continua significando "ainda não respondeu essa etapa", nunca "não tem". */
+const NAO_INFORMADO = "Não informado no formulário";
+const alergiaExcel = (v: string | null) => (!v ? "Não informado" : v === "Nenhuma" ? "Não" : v);
+const passagemExcel = (p: Participant) =>
+  vd(p, "comprada") === "sim" ? "Sim" : vd(p, "comprada") === "nao" ? "Não" : "Não informado";
 
 /** yyyy-mm-dd sem componente de hora → data "pura" em UTC, para o serial do Excel bater
  * com o dia exibido independente do fuso de quem abre o arquivo. */
@@ -97,9 +113,9 @@ const COLUNAS_PARTICIPANTE: ColunaParticipante[] = [
     header: "Restrições alimentares",
     key: "restricoes_alimentares",
     width: 22,
-    get: (p) => p.restricoes_alimentares ?? "",
+    get: (p) => alergiaExcel(p.restricoes_alimentares),
   },
-  { header: "Alergias", key: "alergias", width: 22, get: (p) => p.alergias ?? "" },
+  { header: "Alergias a medicamentos", key: "alergias", width: 22, get: (p) => alergiaExcel(p.alergias) },
   {
     header: "Observações médicas",
     key: "observacoes_medicas",
@@ -123,7 +139,7 @@ const COLUNAS_PARTICIPANTE: ColunaParticipante[] = [
     header: "Passagem comprada",
     key: "passagem_comprada",
     width: 16,
-    get: (p) => (vd(p, "comprada") === "sim" ? "Sim" : vd(p, "comprada") === "nao" ? "Não" : ""),
+    get: passagemExcel,
   },
   { header: "Compra via", key: "compra_via", width: 16, get: (p) => vd(p, "empresa_compra") },
   { header: "Ida — status", key: "voo_ida_status", width: 14, get: (p) => p.voo_ida_status ?? "" },
@@ -345,7 +361,7 @@ export function ParticipantesPage({ openId, setOpenId }: { openId: string | null
                 <td>{p.empresa ?? "—"}</td>
                 <td>{p.cidade ?? "—"}</td>
                 <td>{p.telefone ?? "—"}</td>
-                <td><span className={`badge ${p.restricoes_alimentares && p.restricoes_alimentares !== "Nenhuma" ? "badge-warn" : "badge-neutral"}`}>{p.restricoes_alimentares || "Nenhuma"}</span></td>
+                <td>{restricaoBadge(p.restricoes_alimentares)}</td>
                 <td>{statusBadge(p.seguro_status)}</td>
                 <td>{statusBadge(p.voo_ida_status)}</td>
                 <td>{statusBadge(p.pagamento_status)}</td>
@@ -538,22 +554,26 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
           </div>
         </div>
       </div>
-      {p.voo_detalhes && (
-        <div className="panel" style={{ marginBottom: 20 }}>
-          <div className="panel-header"><i className="ti ti-plane" /> Passagem de ida (respondida no formulário)</div>
-          <div className="panel-body">
+      <div className="panel" style={{ marginBottom: 20 }}>
+        <div className="panel-header"><i className="ti ti-plane" /> Passagem de ida (respondida no formulário)</div>
+        <div className="panel-body">
+          {p.voo_detalhes ? (
             <VooDetalhesTable detalhes={p.voo_detalhes} />
-          </div>
+          ) : (
+            <p style={{ fontSize: 12, color: "var(--text3)", padding: "6px 0" }}>{NAO_INFORMADO}.</p>
+          )}
         </div>
-      )}
-      {p.voo_volta_detalhes && (
-        <div className="panel" style={{ marginBottom: 20 }}>
-          <div className="panel-header"><i className="ti ti-plane" /> Passagem de volta (respondida no formulário)</div>
-          <div className="panel-body">
+      </div>
+      <div className="panel" style={{ marginBottom: 20 }}>
+        <div className="panel-header"><i className="ti ti-plane" /> Passagem de volta (respondida no formulário)</div>
+        <div className="panel-body">
+          {p.voo_volta_detalhes ? (
             <VooDetalhesTable detalhes={p.voo_volta_detalhes} />
-          </div>
+          ) : (
+            <p style={{ fontSize: 12, color: "var(--text3)", padding: "6px 0" }}>{NAO_INFORMADO}.</p>
+          )}
         </div>
-      )}
+      </div>
       <div className="two-col">
         <div className="panel">
           <div className="panel-header"><i className="ti ti-plane" /> Logística</div>
@@ -591,7 +611,16 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
       <div className="panel" style={{ marginBottom: 20 }}>
         <div className="panel-header"><i className="ti ti-meat" /> Saúde & restrições</div>
         <div className="panel-body">
-          <ProfileTable rows={[["Restrições alimentares","restricoes_alimentares"],["Alergias","alergias"],["Observações médicas","observacoes_medicas"],["Medicamentos","medicamentos"]]} participant={p} onSave={save} />
+          <ProfileTable
+            rows={[
+              ["Restrições alimentares", "restricoes_alimentares", NAO_INFORMADO],
+              ["Alergias a medicamentos", "alergias", NAO_INFORMADO],
+              ["Observações médicas", "observacoes_medicas"],
+              ["Medicamentos", "medicamentos"],
+            ]}
+            participant={p}
+            onSave={save}
+          />
         </div>
       </div>
       <div className="panel" style={{ marginBottom: 20 }}>
@@ -605,14 +634,20 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
   );
 }
 
-function ProfileTable({ rows, participant, onSave }: { rows: [string, keyof Participant][]; participant: Participant; onSave: (patch: Partial<Participant>) => void }) {
+function ProfileTable({ rows, participant, onSave }: { rows: [string, keyof Participant, string?][]; participant: Participant; onSave: (patch: Partial<Participant>) => void }) {
   return (
     <table style={{ width: "100%", fontSize: 12, border: "none", borderCollapse: "collapse" }}>
       <tbody>
-        {rows.map(([label, field]) => (
+        {rows.map(([label, field, placeholder]) => (
           <tr key={field as string}>
             <td style={{ color: "var(--text3)", padding: "6px 0", width: "42%" }}>{label}</td>
-            <td style={{ padding: "6px 0" }}><EditableField value={(participant[field] as any) ?? ""} onSave={(v) => onSave({ [field]: v } as any)} /></td>
+            <td style={{ padding: "6px 0" }}>
+              <EditableField
+                value={(participant[field] as any) ?? ""}
+                onSave={(v) => onSave({ [field]: v } as any)}
+                {...(placeholder ? { placeholder } : {})}
+              />
+            </td>
           </tr>
         ))}
       </tbody>
