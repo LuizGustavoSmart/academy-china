@@ -34,6 +34,99 @@ function photoDownloadUrl(p: Participant): string {
   return `${p.foto_url}${p.foto_url!.includes("?") ? "&" : "?"}download=${filename}`;
 }
 
+const fmtDate = (iso: string | null) => (iso ? iso.split("-").reverse().join("/") : "—");
+
+const fmtDateTime = (ts: string) => {
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} · ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+const vd = (p: Participant, campo: string, volta = false) => {
+  const detalhes = volta ? p.voo_volta_detalhes : p.voo_detalhes;
+  const v = detalhes?.[campo];
+  return v == null ? "" : String(v);
+};
+
+/** Exporta todos os participantes com todos os campos do formulário — a mesma base de dados
+ * exibida na tabela, sempre em dia porque lê direto do estado já sincronizado com o Supabase. */
+function exportarPlanilha(list: Participant[]) {
+  if (!list.length) return;
+  const cols: [string, (p: Participant) => string][] = [
+    ["Nome", (p) => p.nome ?? ""],
+    ["Nome completo", (p) => p.nome_completo ?? ""],
+    ["Cargo", (p) => p.cargo ?? ""],
+    ["Empresa", (p) => p.empresa ?? ""],
+    ["Perfil da empresa", (p) => p.empresa_perfil ?? ""],
+    ["Áreas de interesse", (p) => p.areas_interesse ?? ""],
+    ["Site da empresa", (p) => p.empresa_site ?? ""],
+    ["Cidade", (p) => p.cidade ?? ""],
+    ["E-mail", (p) => p.email ?? ""],
+    ["WhatsApp", (p) => p.telefone ?? ""],
+    ["Nacionalidade", (p) => p.nacionalidade ?? ""],
+    ["Nascimento", (p) => fmtDate(p.data_nascimento)],
+    ["Passaporte", (p) => p.passaporte ?? ""],
+    ["Passaporte — emissão", (p) => fmtDate(p.passaporte_emissao)],
+    ["Passaporte — validade", (p) => fmtDate(p.passaporte_validade)],
+    ["Tipo sanguíneo", (p) => p.tipo_sanguineo ?? ""],
+    ["Restrições alimentares", (p) => p.restricoes_alimentares ?? ""],
+    ["Alergias", (p) => p.alergias ?? ""],
+    ["Observações médicas", (p) => p.observacoes_medicas ?? ""],
+    ["Medicamentos", (p) => p.medicamentos ?? ""],
+    ["Contato de emergência", (p) => p.contato_emergencia ?? ""],
+    ["Camisa", (p) => p.tamanho_camisa ?? ""],
+    ["Blazer", (p) => p.tamanho_blazer ?? ""],
+    ["Foto enviada", (p) => (p.foto_url ? "Sim" : "Não")],
+    ["Quarto", (p) => p.quarto ?? ""],
+    ["Seguro viagem", (p) => p.seguro_status ?? ""],
+    ["Uso de imagem", (p) => p.uso_imagem_status ?? ""],
+    ["Passagem comprada", (p) => (vd(p, "comprada") === "sim" ? "Sim" : vd(p, "comprada") === "nao" ? "Não" : "")],
+    ["Compra via", (p) => vd(p, "empresa_compra")],
+    ["Ida — status", (p) => p.voo_ida_status ?? ""],
+    ["Ida — Cia aérea", (p) => vd(p, "cia")],
+    ["Ida — Voo", (p) => vd(p, "numero")],
+    ["Ida — Classe", (p) => vd(p, "classe")],
+    ["Ida — Origem", (p) => vd(p, "origem")],
+    ["Ida — Conexões", (p) => vd(p, "conexoes")],
+    ["Ida — Destino", (p) => vd(p, "destino")],
+    ["Ida — Embarque", (p) => vd(p, "data_embarque")],
+    ["Ida — Partida", (p) => vd(p, "partida")],
+    ["Ida — Chegada", (p) => vd(p, "chegada")],
+    ["Ida — Terminal", (p) => vd(p, "terminal")],
+    ["Volta — status", (p) => p.voo_volta_status ?? ""],
+    ["Volta — Cia aérea", (p) => vd(p, "cia", true)],
+    ["Volta — Voo", (p) => vd(p, "numero", true)],
+    ["Volta — Classe", (p) => vd(p, "classe", true)],
+    ["Volta — Origem", (p) => vd(p, "origem", true)],
+    ["Volta — Conexões", (p) => vd(p, "conexoes", true)],
+    ["Volta — Destino", (p) => vd(p, "destino", true)],
+    ["Volta — Embarque", (p) => vd(p, "data_embarque", true)],
+    ["Volta — Partida", (p) => vd(p, "partida", true)],
+    ["Volta — Chegada", (p) => vd(p, "chegada", true)],
+    ["Volta — Terminal", (p) => vd(p, "terminal", true)],
+    ["Tier", (p) => p.tier ?? ""],
+    ["Valor pago (R$)", (p) => String(p.valor_pago ?? "")],
+    ["Parcelas", (p) => String(p.parcelas ?? "")],
+    ["Pagamento", (p) => p.pagamento_status ?? ""],
+    ["Contrato", (p) => p.contrato_status ?? ""],
+    ["Status geral", (p) => p.status ?? ""],
+    ["Origem do cadastro", (p) => p.origem ?? ""],
+    ["Observações", (p) => p.observacoes ?? ""],
+    ["Cadastrado em", (p) => fmtDateTime(p.created_at)],
+  ];
+  const esc = (v: string) => `"${(v ?? "").replace(/"/g, '""')}"`;
+  const linhas = [
+    cols.map(([h]) => esc(h)).join(";"),
+    ...list.map((p) => cols.map(([, fn]) => esc(fn(p))).join(";")),
+  ];
+  const blob = new Blob(["﻿" + linhas.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `participantes-academy-china-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /** Dispara um download por vez, escalonado — abrir vários <a download> juntos costuma ser
  * bloqueado ou parcialmente ignorado pelo navegador. */
 function downloadPhotosSequentially(participants: Participant[]) {
@@ -81,6 +174,14 @@ export function ParticipantesPage({ openId, setOpenId }: { openId: string | null
       <div className="flex-between mb-16">
         <div className="section-label" style={{ margin: 0 }}>Participantes</div>
         <div style={{ display: "flex", gap: 8 }}>
+          <button
+            className="btn-secondary"
+            style={{ fontSize: 12, padding: "7px 14px" }}
+            onClick={() => exportarPlanilha(list)}
+            disabled={list.length === 0}
+          >
+            <i className="ti ti-download" /> Baixar planilha
+          </button>
           {selectedWithPhoto.length > 0 && (
             <button
               className="btn-secondary"
