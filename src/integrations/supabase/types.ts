@@ -340,6 +340,50 @@ export type Database = {
         }
         Relationships: []
       }
+      parcelas_pagamento: {
+        Row: {
+          created_at: string
+          data_pagamento: string | null
+          data_vencimento: string | null
+          id: string
+          numero: number
+          paga: boolean
+          participant_id: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          id?: string
+          numero: number
+          paga?: boolean
+          participant_id: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          id?: string
+          numero?: number
+          paga?: boolean
+          participant_id?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parcelas_pagamento_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       participant_activities: {
         Row: {
           autor: string | null
