@@ -377,6 +377,7 @@ export type Database = {
           valor_pago: number
           voo_detalhes: Json | null
           voo_ida_status: string
+          voo_volta_detalhes: Json | null
           voo_volta_status: string
         }
         Insert: {
@@ -422,6 +423,7 @@ export type Database = {
           valor_pago?: number
           voo_detalhes?: Json | null
           voo_ida_status?: string
+          voo_volta_detalhes?: Json | null
           voo_volta_status?: string
         }
         Update: {
@@ -467,6 +469,7 @@ export type Database = {
           valor_pago?: number
           voo_detalhes?: Json | null
           voo_ida_status?: string
+          voo_volta_detalhes?: Json | null
           voo_volta_status?: string
         }
         Relationships: []
