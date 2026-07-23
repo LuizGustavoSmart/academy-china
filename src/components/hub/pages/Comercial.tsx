@@ -71,8 +71,8 @@ function ComercialDash() {
     <div className="main">
       <div className="metrics" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))" }}>
         <Metric icon="ti-users" label="Leads ativos" value={String(ativos)} sub="ainda no funil comercial" />
-        <Metric icon="ti-check" label="Confirmados" value={String(confirmados)} sub="coluna P6 do pipeline" cls="metric-ok" />
         <Metric icon="ti-trending-up" label="Em negociação" value={String(emNegociacao)} sub="etapa Negociação" cls="metric-warn" />
+        <Metric icon="ti-check" label="Confirmados" value={String(confirmados)} sub="coluna P6 do pipeline" cls="metric-ok" />
         <Metric icon="ti-file-text" label="Contratos" value={String(contratos)} sub="coluna P7 do pipeline" cls="metric-warn" />
         <Metric icon="ti-user-x" label="Leads declinados" value={String(declinados.length)} sub="recusaram / desistiram" cls="metric-danger" />
         <Metric icon="ti-currency-dollar" label="Ticket médio" value={fmtBRL(107250)} sub="R$ 99k–R$ 115,5k" />

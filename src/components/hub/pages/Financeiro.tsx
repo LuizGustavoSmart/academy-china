@@ -31,7 +31,7 @@ export function FinanceiroPage() {
       <div className="metrics" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
         <Metric icon="ti-chart-line" label="Projeção máxima de receita" value={fmtBRL(projecaoMax)} sub={`${meta} vagas × ${fmtBRL(ticketMedio)} médio`} cls="metric-ok" />
         <Metric icon="ti-cash" label="Receita mínima viável" value={fmtBRL(receitaMin)} sub={`${minV} vagas × ${fmtBRL(tierStd)}`} />
-        <Metric icon="ti-trending-down" label="Custo estimado total" value={fmtBRL(custoTotal)} sub={`câmbio adotado R$ ${fin.cambio.toFixed(2).replace(".", ",")}`} cls="metric-warn" />
+        <Metric icon="ti-trending-down" label="Custos e despesas totais" value={fmtBRL(custoTotal)} sub={`câmbio adotado R$ ${fin.cambio.toFixed(2).replace(".", ",")}`} cls="metric-warn" />
         <Metric icon="ti-chart-line" label="Margem bruta estimada" value={`~${margem.toFixed(0)}%`} sub="cenário meta / ticket médio" cls="metric-ok" />
         <Metric icon="ti-check" label="Recebido até agora" value={fmtBRL(recebido)} sub={`${confirmed.length} pagamento(s) confirmado(s)`} cls="metric-ok" />
       </div>
@@ -40,10 +40,8 @@ export function FinanceiroPage() {
       </div>
       <div className="section-label" style={{ marginTop: 0 }}>Configuração geral</div>
       <div className="panel" style={{ marginBottom: 20 }}>
-        <div className="panel-body" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12 }}>
-          <FinField label="Câmbio (R$/USD)" value={fin.cambio} onSave={(v) => update.mutate({ cambio: v })} step="0.01" />
+        <div className="panel-body" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
           <FinField label="Tier Cliente Matter (R$)" value={fin.tier_standard} onSave={(v) => update.mutate({ tier_standard: v })} />
-          <FinField label="Tier Standard (R$)" value={fin.tier_premium} onSave={(v) => update.mutate({ tier_premium: v })} />
           <FinField label="Vagas mínimas" value={fin.min_vagas} onSave={(v) => update.mutate({ min_vagas: v })} />
           <FinField label="Vagas meta" value={fin.meta_vagas} onSave={(v) => update.mutate({ meta_vagas: v })} />
         </div>
@@ -73,8 +71,7 @@ export function FinanceiroPage() {
           <div className="panel-body">
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <Cenario title={`Mínimo viável — ${minV} pax × ${fmtBRL(tierStd)}`} badge="Ponto de equilíbrio" badgeClass="badge-warn" receita={minV * tierStd} custo={custoTotal} bg="var(--surface2)" />
-              <Cenario title={`Meta — ${meta} pax × ${fmtBRL(ticketMedio)} médio`} badge="Cenário alvo" badgeClass="badge-ok" receita={meta * ticketMedio} custo={custoTotal} bg="var(--teal-light)" accent="var(--teal)" />
-              <Cenario title={`Otimista — ${meta} pax × ${fmtBRL(tierPrem)}`} badge="Upside" badgeClass="badge-blue" receita={meta * tierPrem} custo={custoTotal} bg="var(--surface2)" />
+              <Cenario title={`Meta — ${meta} pax × ${fmtBRL(tierStd)}`} badge="Cenário alvo" badgeClass="badge-ok" receita={meta * tierStd} custo={custoTotal} bg="var(--teal-light)" accent="var(--teal)" />
             </div>
             <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 12 }}>* Custos reais dependem de confirmação com parceiros locais. Câmbio adotado: R$ {fin.cambio.toFixed(2).replace(".", ",")} / USD.</div>
           </div>
@@ -132,6 +129,11 @@ function FinField({ label, value, onSave, step }: { label: string; value: number
 function CustosPanel({ custos, custoTotal }: { custos: Custo[]; custoTotal: number }) {
   const [creating, setCreating] = useState(false);
   const [viewing, setViewing] = useState<Custo | null>(null);
+  // Sugestões: as categorias padrão + qualquer categoria livre já usada em custos existentes,
+  // para reaproveitar nomes em vez de criar variações do mesmo conceito.
+  const categoriasExistentes = Array.from(
+    new Set([...CATEGORIAS_CUSTO.map((c) => c.label), ...custos.map((c) => categoriaLabel(c.categoria))]),
+  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
   return (
     <div className="panel">
       <div className="panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -159,17 +161,17 @@ function CustosPanel({ custos, custoTotal }: { custos: Custo[]; custoTotal: numb
           <span style={{ fontSize: 14, fontWeight: 500, color: "var(--accent)" }}>{fmtBRL(custoTotal)}</span>
         </div>
       </div>
-      {creating && <CustoFormModal open onClose={() => setCreating(false)} />}
-      {viewing && <CustoDetailModal custo={viewing} onClose={() => setViewing(null)} />}
+      {creating && <CustoFormModal open onClose={() => setCreating(false)} categoriasExistentes={categoriasExistentes} />}
+      {viewing && <CustoDetailModal custo={viewing} onClose={() => setViewing(null)} categoriasExistentes={categoriasExistentes} />}
     </div>
   );
 }
 
-function CustoDetailModal({ custo, onClose }: { custo: Custo; onClose: () => void }) {
+function CustoDetailModal({ custo, onClose, categoriasExistentes }: { custo: Custo; onClose: () => void; categoriasExistentes: string[] }) {
   const del = useDeleteCusto();
   const [editing, setEditing] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
-  if (editing) return <CustoFormModal open onClose={onClose} custo={custo} />;
+  if (editing) return <CustoFormModal open onClose={onClose} custo={custo} categoriasExistentes={categoriasExistentes} />;
   return (
     <Modal open onClose={onClose} title={custo.titulo}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -194,21 +196,45 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return <div><div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 2 }}>{label}</div><div style={{ fontSize: 13 }}>{value}</div></div>;
 }
 
-function CustoFormModal({ open, onClose, custo }: { open: boolean; onClose: () => void; custo?: Custo }) {
+function CustoFormModal({ open, onClose, custo, categoriasExistentes }: { open: boolean; onClose: () => void; custo?: Custo; categoriasExistentes: string[] }) {
   const create = useCreateCusto();
   const update = useUpdateCusto();
-  const [form, setForm] = useState({ categoria: custo?.categoria ?? "outro", titulo: custo?.titulo ?? "", descricao: custo?.descricao ?? "", tipo: custo?.tipo ?? "fixo", valor_fixo: custo?.valor_fixo ?? 0, valor_variavel: custo?.valor_variavel ?? 0, data_vencimento: custo?.data_vencimento ?? "" });
+  const [form, setForm] = useState({ categoria: custo?.categoria ?? "", titulo: custo?.titulo ?? "", descricao: custo?.descricao ?? "", tipo: custo?.tipo ?? "fixo", valor_fixo: custo?.valor_fixo ?? 0, valor_variavel: custo?.valor_variavel ?? 0, data_vencimento: custo?.data_vencimento ?? "" });
+  const [erro, setErro] = useState<string | null>(null);
+  const salvando = create.isPending || update.isPending;
   const submit = () => {
-    if (!form.titulo.trim()) return;
-    const patch = { ...form, data_vencimento: form.data_vencimento || null };
-    if (custo) { update.mutate({ id: custo.id, patch }, { onSuccess: onClose }); } else { create.mutate(patch, { onSuccess: onClose }); }
+    if (!form.titulo.trim() || !form.categoria.trim()) {
+      setErro("Preencha ao menos o título e a categoria.");
+      return;
+    }
+    setErro(null);
+    const patch = { ...form, categoria: form.categoria.trim(), data_vencimento: form.data_vencimento || null };
+    const opts = {
+      onSuccess: onClose,
+      onError: () =>
+        setErro("Não foi possível salvar o custo. Verifique a conexão com o banco e tente novamente."),
+    };
+    if (custo) update.mutate({ id: custo.id, patch }, opts);
+    else create.mutate(patch, opts);
   };
   return (
     <Modal open={open} onClose={onClose} title={custo ? "Editar custo" : "Novo custo"}>
       <div className="form-group"><label className="form-label">Título *</label><input className="form-input" value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} /></div>
       <div className="form-group"><label className="form-label">Descrição</label><textarea className="form-textarea" style={{ minHeight: 70 }} value={form.descricao ?? ""} onChange={(e) => setForm({ ...form, descricao: e.target.value })} /></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <div className="form-group"><label className="form-label">Categoria</label><select className="form-select" value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })}>{CATEGORIAS_CUSTO.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}</select></div>
+        <div className="form-group">
+          <label className="form-label">Categoria *</label>
+          <input
+            className="form-input"
+            list="categorias-existentes"
+            value={form.categoria}
+            onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+            placeholder="Escolha uma existente ou digite uma nova"
+          />
+          <datalist id="categorias-existentes">
+            {categoriasExistentes.map((c) => <option key={c} value={c} />)}
+          </datalist>
+        </div>
         <div className="form-group"><label className="form-label">Tipo de valor</label><select className="form-select" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}><option value="fixo">Somente valor fixo</option><option value="variavel">Somente valor variável</option><option value="ambos">Fixo + variável</option></select></div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -216,9 +242,12 @@ function CustoFormModal({ open, onClose, custo }: { open: boolean; onClose: () =
         {(form.tipo === "variavel" || form.tipo === "ambos") && <div className="form-group"><label className="form-label">Valor variável (R$)</label><input className="form-input" type="number" value={form.valor_variavel} onChange={(e) => setForm({ ...form, valor_variavel: Number(e.target.value) })} /></div>}
         <div className="form-group"><label className="form-label">Prazo / vencimento</label><input className="form-input" type="date" value={form.data_vencimento ?? ""} onChange={(e) => setForm({ ...form, data_vencimento: e.target.value })} /></div>
       </div>
+      {erro && <div className="modal-inline-error"><i className="ti ti-alert-circle" /> {erro}</div>}
       <div className="flex-end">
-        <button className="btn-secondary" onClick={onClose}>Cancelar</button>
-        <button className="btn-primary" onClick={submit}>{custo ? "Salvar" : "Adicionar"}</button>
+        <button className="btn-secondary" onClick={onClose} disabled={salvando}>Cancelar</button>
+        <button className="btn-primary" onClick={submit} disabled={salvando}>
+          {salvando ? <i className="ti ti-loader-2 modal-spinner" /> : null} {custo ? "Salvar" : "Adicionar"}
+        </button>
       </div>
     </Modal>
   );
