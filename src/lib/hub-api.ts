@@ -214,22 +214,6 @@ export function useParticipant(id: string | null) {
   });
 }
 
-async function hasActiveParticipant(nome: string | null | undefined): Promise<boolean> {
-  const clean = nome?.trim();
-  if (!clean) return false;
-  const { data, error } = await sb.from("participants").select("id,status").eq("nome", clean);
-  if (error) throw error;
-  return (data ?? []).some((participant: Pick<Participant, "status">) => participant.status !== "removido_comercial");
-}
-
-async function hasParticipantRecord(nome: string | null | undefined): Promise<boolean> {
-  const clean = nome?.trim();
-  if (!clean) return false;
-  const { data, error } = await sb.from("participants").select("id").eq("nome", clean).limit(1);
-  if (error) throw error;
-  return (data ?? []).length > 0;
-}
-
 export function useCreateParticipant() {
   const qc = useQueryClient();
   return useMutation({
@@ -300,9 +284,6 @@ export function useCreateLead() {
   return useMutation({
     mutationFn: async (l: Partial<Lead>) => {
       const safeLead = enforceLeadWorkflowState(l);
-      if (safeLead.passo === STAGE_CONTRATO && !(await hasActiveParticipant(safeLead.nome))) {
-        throw new Error("Crie o participante antes de mover este contato para Contrato.");
-      }
       const { data, error } = await sb.from("leads_crm").insert(safeLead).select().single();
       if (error) throw error;
       return data;
@@ -323,9 +304,6 @@ export function useUpdateLead() {
         const nextPasso = safePatch.passo ?? current.passo;
         const wasContracted = current.passo === STAGE_CONTRATO && normalizeStatus(current.status) !== "declinado";
         const willBeContracted = nextPasso === STAGE_CONTRATO && normalizeStatus(safePatch.status ?? current.status) !== "declinado";
-        if (willBeContracted && !(await hasParticipantRecord(current.nome))) {
-          throw new Error("Crie o participante antes de mover este contato para Contrato.");
-        }
         if (wasContracted && !willBeContracted) {
           const { error: removeError } = await sb.from("participants")
             .update({ status: "removido_comercial", updated_at: new Date().toISOString() })

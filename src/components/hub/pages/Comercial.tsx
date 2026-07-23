@@ -7,7 +7,7 @@ import {
   PASSO_LABELS, STAGE_CONFIRMADO, STAGE_CONTRATO, STAGE_NEGOCIACAO, STAGE_ORDER, NEGOTIATION_STAGES, passoLabel, pipelineStage,
   fmtBRL, normalizeStatus, statusLabel, statusBadgeClass, isDeclined, isConfirmedLead, STATUS_OPTIONS, respAvatar,
   useCreateLead, useDeleteLead, useLeads, useParticipants, usePendencias, useResponsaveis,
-  useSetLeadResponsaveis, useUpdateLead, useUpdateParticipant, useCreateParticipant, useCreateLeadActivity, useLeadActivities, copyLeadHistoryToParticipant,
+  useSetLeadResponsaveis, useUpdateLead, useUpdateParticipant, useCreateLeadActivity,
   useCreateResponsavel,
   type Lead, type Participant,
 } from "@/lib/hub-api";
@@ -29,7 +29,7 @@ export function ComercialPage({ sub, onViewParticipant }: { sub: string; onViewP
   useEnsureDefaultResponsaveis();
   // Trocar de sub-aba (Leads/Pipeline/Dashboard…) fecha o detalhamento aberto.
   useEffect(() => { setOpenLeadId(null); }, [sub]);
-  if (openLeadId) return <LeadDetail id={openLeadId} onBack={() => setOpenLeadId(null)} onViewParticipant={onViewParticipant} />;
+  if (openLeadId) return <LeadDetail id={openLeadId} onBack={() => setOpenLeadId(null)} />;
   if (sub === "leads") return <LeadsTab onOpenLead={setOpenLeadId} onViewParticipant={onViewParticipant} />;
   if (sub === "pipeline") return <PipelineTab onOpenLead={setOpenLeadId} onViewParticipant={onViewParticipant} />;
   if (sub === "mensagens") return <MensagensAccordion etapa="comercial" intro="As mensagens seguem a ordem cronológica do funil. Clique em cada passo para ver os scripts." />;
@@ -107,8 +107,6 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
   const [creating, setCreating] = useState(false);
   const [editingPart, setEditingPart] = useState<Participant | null>(null);
   const [assigningLeadId, setAssigningLeadId] = useState<string | null>(null);
-  const [promotingLeadId, setPromotingLeadId] = useState<string | null>(null);
-  const update = useUpdateLead();
   const createLead = useCreateLead();
 
   const [q, setQ] = useState("");
@@ -176,8 +174,6 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
   const orphanRows = orphanParticipants.filter((p) => matchText([p.nome, p.empresa, p.email, p.telefone, p.cargo, p.cidade]));
   const totalShown = rows.length + (showOrphans ? orphanRows.length : 0);
   const assigningLead = assigningLeadId ? leads.find((l) => l.id === assigningLeadId) ?? null : null;
-  const promotingLead = promotingLeadId ? leads.find((l) => l.id === promotingLeadId) ?? null : null;
-  const participantNames = new Set(participants.map((p) => p.nome.toLowerCase().trim()));
 
   return (
     <div className="main main-wide">
@@ -231,7 +227,7 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
                 <td>{l.email ?? "—"}</td>
                 <td>{l.telefone ?? "—"}</td>
                 <td>{l.cidade ?? "—"}</td>
-                <td><PassoInlineSelect lead={l} hasParticipant={participantNames.has(l.nome.toLowerCase().trim())} onPromotionRequired={() => setPromotingLeadId(l.id)} /></td>
+                <td><PassoInlineSelect lead={l} /></td>
                 <td>{l.cadastrado_por ?? "—"}</td>
                 <td>
                   <button
@@ -269,13 +265,12 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
       {creating && <LeadModal open onClose={() => setCreating(false)} />}
       {editingPart && <OrphanEditModal participant={editingPart} onClose={() => setEditingPart(null)} />}
       {assigningLead && <ResponsavelQuickModal lead={assigningLead} onClose={() => setAssigningLeadId(null)} />}
-      {promotingLead && <PromoteToParticipantModal lead={promotingLead} onClose={() => setPromotingLeadId(null)} onDone={() => update.mutate({ id: promotingLead.id, patch: { passo: STAGE_CONTRATO, status: "em_negociacao" } })} />}
     </div>
   );
 }
 
 /** Etapa do funil editável direto na linha da tabela — sem precisar abrir o detalhamento. */
-function PassoInlineSelect({ lead, hasParticipant, onPromotionRequired }: { lead: Lead; hasParticipant: boolean; onPromotionRequired: () => void }) {
+function PassoInlineSelect({ lead }: { lead: Lead }) {
   const update = useUpdateLead();
   const [open, setOpen] = useState(false);
   const currentStage = pipelineStage(lead.passo);
@@ -286,7 +281,6 @@ function PassoInlineSelect({ lead, hasParticipant, onPromotionRequired }: { lead
   const choose = (passo: number) => {
     setOpen(false);
     if (passo === DECLINADO_COL) { update.mutate({ id: lead.id, patch: { status: "declinado" } }); return; }
-    if (passo === STAGE_CONTRATO && !hasParticipant) { onPromotionRequired(); return; }
     update.mutate({ id: lead.id, patch: { passo, ...(declined ? { status: "abordado" } : {}) } });
   };
   return (
@@ -480,7 +474,6 @@ function PipelineTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: strin
   const del = useDeleteLead();
   const addActivity = useCreateLeadActivity();
   const [modalStage, setModalStage] = useState<number | null>(null);
-  const [promoteLead, setPromoteLead] = useState<Lead | null>(null);
   const [editingOrphan, setEditingOrphan] = useState<Participant | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<number>>(() => {
@@ -491,7 +484,6 @@ function PipelineTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: strin
 
   const leadNames = new Set(leads.map((l) => l.nome.toLowerCase().trim()));
   const orphanParticipants = participants.filter((p) => !leadNames.has(p.nome.toLowerCase().trim()));
-  const participantNames = new Set(participants.map((p) => p.nome.toLowerCase().trim()));
   const activeLeads = leads.filter((l) => !isDeclined(l));
   const declinedLeads = leads.filter(isDeclined);
 
@@ -526,13 +518,6 @@ function PipelineTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: strin
       // Só muda o status — o passo é preservado, guardando em qual etapa o lead estava.
       update.mutate({ id: rawId, patch: { status: "declinado" } });
       addActivity.mutate({ lead_id: rawId, conteudo: `Lead declinado em ${passoLabel(lead.passo)}.`, autor: "Sistema", tipo: "status" });
-      return;
-    }
-
-    // A etapa Contrato só existe depois que o registro de participante foi criado.
-    // Assim não há contrato no Comercial sem a pessoa na Pré-viagem.
-    if (target === STAGE_CONTRATO && !participantNames.has(lead.nome.toLowerCase().trim())) {
-      setPromoteLead(lead);
       return;
     }
 
@@ -583,7 +568,6 @@ function PipelineTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: strin
       </DndContext>
       {modalStage !== null && <LeadModal open onClose={() => setModalStage(null)} initialPasso={modalStage === DECLINADO_COL ? 1 : modalStage} />}
       {editingOrphan && <OrphanEditModal participant={editingOrphan} onClose={() => setEditingOrphan(null)} />}
-      {promoteLead && <PromoteToParticipantModal lead={promoteLead} onClose={() => setPromoteLead(null)} onDone={() => update.mutate({ id: promoteLead.id, patch: { passo: STAGE_CONTRATO, status: "em_negociacao" } })} />}
     </div>
   );
 }
@@ -719,7 +703,7 @@ function OrphanCardInner({ participant: p, overlay, onEdit }: { participant: Par
 }
 
 // ══════════════════════════ DETALHAMENTO DO LEAD ══════════════════════════
-function LeadDetail({ id, onBack, onViewParticipant }: { id: string; onBack: () => void; onViewParticipant?: (id: string) => void }) {
+function LeadDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const { data: leads = [] } = useLeads();
   const { data: participants = [] } = useParticipants();
   const update = useUpdateLead();
@@ -728,7 +712,6 @@ function LeadDetail({ id, onBack, onViewParticipant }: { id: string; onBack: () 
   const addActivity = useCreateLeadActivity();
   const [confirmDel, setConfirmDel] = useState(false);
   const [confirmDecline, setConfirmDecline] = useState(false);
-  const [promote, setPromote] = useState(false);
   const [respDraft, setRespDraft] = useState<string[] | null>(null);
 
   useEffect(() => { setRespDraft(null); }, [id]);
@@ -797,11 +780,9 @@ function LeadDetail({ id, onBack, onViewParticipant }: { id: string; onBack: () 
             <ResponsavelTags responsaveis={p.responsaveis} />
           </div>
         </div>
-        {alreadyParticipant
-          ? <span className="badge badge-ok" style={{ flexShrink: 0 }}><i className="ti ti-user-check" /> Já é participante</span>
-          : pipelineStage(p.passo) === STAGE_CONTRATO && (
-            <button className="btn-primary" style={{ fontSize: 12, padding: "7px 14px", flexShrink: 0 }} onClick={() => setPromote(true)}><i className="ti ti-user-plus" /> Criar participante</button>
-          )}
+        {alreadyParticipant && (
+          <span className="badge badge-ok" style={{ flexShrink: 0 }}><i className="ti ti-user-check" /> Já é participante</span>
+        )}
       </div>
 
       <div className="two-col">
@@ -817,11 +798,7 @@ function LeadDetail({ id, onBack, onViewParticipant }: { id: string; onBack: () 
             <SelectRow
               label="Etapa"
               value={String(pipelineStage(p.passo))}
-              onChange={(v) => {
-                const passo = Number(v);
-                if (passo === STAGE_CONTRATO && !alreadyParticipant) { setPromote(true); return; }
-                save({ passo });
-              }}
+              onChange={(v) => save({ passo: Number(v) })}
               options={(STAGES.includes(pipelineStage(p.passo)) ? STAGES : [...STAGES, pipelineStage(p.passo)]).map((s) => ({ value: String(s), label: etapaLabel(s) }))}
             />
             <div style={{ padding: "8px 0" }}>
@@ -854,10 +831,6 @@ function LeadDetail({ id, onBack, onViewParticipant }: { id: string; onBack: () 
 
       <ConfirmDialog open={confirmDecline} onClose={() => setConfirmDecline(false)} onConfirm={doDecline} title="Declinar lead" message={`Marcar ${p.nome} como declinado? Ele sai do funil ativo e dos indicadores de negociação, mas continua no histórico e pode ser reativado.`} confirmLabel="Declinar" />
       <ConfirmDialog open={confirmDel} onClose={() => setConfirmDel(false)} onConfirm={() => del.mutate(id, { onSuccess: onBack })} title="Excluir lead" message={`Tem certeza que deseja excluir ${p.nome}? Essa ação não pode ser desfeita — considere declinar em vez de excluir.`} confirmLabel="Excluir" />
-      {promote && <PromoteToParticipantModal lead={p} onClose={() => setPromote(false)} onDone={(participantId) => {
-        save({ passo: STAGE_CONTRATO, status: "em_negociacao" });
-        onViewParticipant?.(participantId);
-      }} />}
     </div>
   );
 }
@@ -947,44 +920,4 @@ function LeadModal({ open, onClose, initialPasso }: { open: boolean; onClose: ()
       <div className="flex-end"><button className="btn-secondary" onClick={onClose}>Cancelar</button><button className="btn-primary" onClick={submit}>Adicionar</button></div>
     </Modal>
   );
-}
-
-function PromoteToParticipantModal({ lead, onClose, onDone }: { lead: Lead; onClose: () => void; onDone?: (id: string) => void }) {
-  const create = useCreateParticipant();
-  const { data: leadActivities = [] } = useLeadActivities(lead.id);
-  const [form, setForm] = useState({ nome: lead.nome, cargo: lead.cargo ?? "", empresa: lead.empresa ?? "", cidade: lead.cidade ?? "", telefone: lead.telefone ?? "", email: lead.email ?? "", observacoes: lead.observacoes ?? "", restricoes_alimentares: "", tier: "standard", valor_pago: 93600, pagamento_status: "confirmado" as const, contrato_status: "assinado" as const, status: "em_andamento" });
-  const promote = () => create.mutate(form, {
-    onSuccess: async (np: any) => {
-      if (!np?.id) return;
-      try {
-        await copyLeadHistoryToParticipant(lead.id, np.id);
-      } finally {
-        onClose();
-        onDone?.(np.id);
-      }
-    },
-  });
-  return (
-    <Modal open onClose={onClose} title={`Promover ${lead.nome} a participante`}>
-      <p style={{ fontSize: 12, color: "var(--text2)", marginBottom: 14 }}>O lead foi confirmado. Complete os dados para criar o registro de participante — só a partir daqui ele entra no pipeline da Pré-viagem. {leadActivities.length || lead.observacoes?.trim() ? "As observações e o histórico comercial serão preservados na Pré-viagem." : ""}</p>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <Field label="Nome *" v={form.nome} on={(v) => setForm({ ...form, nome: v })} />
-        <Field label="Cargo" v={form.cargo} on={(v) => setForm({ ...form, cargo: v })} />
-        <Field label="Empresa" v={form.empresa} on={(v) => setForm({ ...form, empresa: v })} />
-        <Field label="Cidade" v={form.cidade} on={(v) => setForm({ ...form, cidade: v })} />
-        <Field label="WhatsApp" v={form.telefone} on={(v) => setForm({ ...form, telefone: v })} />
-        <Field label="E-mail" v={form.email} on={(v) => setForm({ ...form, email: v })} />
-        <div className="form-group"><label className="form-label">Tier</label><select className="form-select" value={form.tier} onChange={(e) => setForm({ ...form, tier: e.target.value, valor_pago: e.target.value === "premium" ? 109200 : 93600 })}><option value="standard">Cliente Matter (R$ 93.600)</option><option value="premium">Standard (R$ 109.200)</option></select></div>
-        <div className="form-group"><label className="form-label">Valor (R$)</label><input className="form-input" type="number" value={form.valor_pago} onChange={(e) => setForm({ ...form, valor_pago: Number(e.target.value) })} /></div>
-      </div>
-      <div className="flex-end">
-        <button className="btn-secondary" onClick={onClose}>Manter só como lead</button>
-        <button className="btn-primary" onClick={promote} disabled={create.isPending}>Criar participante</button>
-      </div>
-    </Modal>
-  );
-}
-
-function Field({ label, v, on }: { label: string; v: string; on: (s: string) => void }) {
-  return <div className="form-group"><label className="form-label">{label}</label><input className="form-input" value={v} onChange={(e) => on(e.target.value)} /></div>;
 }

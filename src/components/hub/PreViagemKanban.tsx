@@ -14,31 +14,27 @@ export const TP_NAMES: Record<string, string> = {
 export const TP_DAYS: Record<string, number> = { "D-60": 60, "D-45": 45, "D-30": 30, "D-21": 21, "D-14": 14, "D-7": 7, "D-3": 3 };
 export const DEPARTURE_DATE = new Date("2026-10-28");
 
-// Colunas do board: entrada (recém-cadastrados, ainda sem contrato/pagamento) → aguardando
-// formulário → formulário preenchido → 7 touchpoints → Concluído. Cor esquenta conforme o
+// Colunas do board: formulário enviado → formulário preenchido → 7 touchpoints → Concluído.
+// Todo participante já entra pelo formulário público (não há mais criação manual pelo
+// comercial), então o board começa direto na etapa do formulário. Cor esquenta conforme o
 // embarque se aproxima.
-const COLS = ["entrada", "aguardando_formulario", "formulario_preenchido", ...TPS, "done"];
+const COLS = ["formulario_enviado", "formulario_preenchido", ...TPS, "done"];
 const COL_COLORS: Record<string, string> = {
-  entrada: "#5c6470", aguardando_formulario: "#8a6d3b", formulario_preenchido: "#3f7d5c",
+  formulario_enviado: "#8a6d3b", formulario_preenchido: "#3f7d5c",
   "D-60": "#185fa5", "D-45": "#4a6fc0", "D-30": "#7268c4", "D-21": "#945dbb",
   "D-14": "#ad5299", "D-7": "#bc4767", "D-3": "#c0392b", done: "#0f6e56",
 };
 const COL_ICONS: Record<string, string> = {
-  entrada: "ti-user-plus", aguardando_formulario: "ti-clipboard-text", formulario_preenchido: "ti-clipboard-check",
+  formulario_enviado: "ti-clipboard-text", formulario_preenchido: "ti-clipboard-check",
   "D-60": "ti-video", "D-45": "ti-flame", "D-30": "ti-plane-departure", "D-21": "ti-bulb",
   "D-14": "ti-checklist", "D-7": "ti-movie", "D-3": "ti-luggage", done: "ti-confetti",
 };
 const COL_META: Record<string, { title: string; sub: string }> = {
-  entrada: { title: "Entrada do participante", sub: "Pagamento confirmado — pronto para iniciar a Pré-viagem" },
-  aguardando_formulario: { title: "Aguardando formulário", sub: "Aguardando preenchimento do formulário público" },
+  formulario_enviado: { title: "Formulário Enviado", sub: "Aguardando preenchimento do formulário público" },
   formulario_preenchido: { title: "Formulário preenchido", sub: "Dados recebidos — pronto para a jornada" },
   done: { title: "Concluído", sub: "Prontos para embarcar" },
 };
 
-/** Um participante só entra na jornada de touchpoints depois de contrato assinado + pagamento confirmado. */
-function isJourneyReady(p: Participant): boolean {
-  return p.pagamento_status === "confirmado" && p.contrato_status === "assinado";
-}
 /** O formulário público (china.matteracademy.ai/formulario) foi identificado e sincronizado
  * com este participante — ver supabase/functions/sync-participant-form. */
 function isFormFilled(p: Participant): boolean {
@@ -68,15 +64,13 @@ function hasStartedTouchpoints(m: TpMap, p: Participant): boolean {
   return TPS.some((code) => getStatus(m, p.id, code) !== "nao_iniciado");
 }
 
-/** Índice da coluna atual: 0 = entrada, 1 = aguardando formulário, 2 = formulário preenchido
- * (descansa aqui até ser arrastado manualmente para o primeiro touchpoint), 3..9 = touchpoints,
- * 10 = concluído. */
+/** Índice da coluna atual: 0 = formulário enviado, 1 = formulário preenchido (descansa aqui até
+ * ser arrastado manualmente para o primeiro touchpoint), 2..8 = touchpoints, 9 = concluído. */
 function getStageIndex(m: TpMap, p: Participant): number {
-  if (!isJourneyReady(p)) return 0;
-  if (!isFormFilled(p)) return 1;
-  if (!hasStartedTouchpoints(m, p)) return 2;
-  for (let i = 0; i < TPS.length; i++) if (getStatus(m, p.id, TPS[i]) !== "realizado") return i + 3;
-  return TPS.length + 3;
+  if (!isFormFilled(p)) return 0;
+  if (!hasStartedTouchpoints(m, p)) return 1;
+  for (let i = 0; i < TPS.length; i++) if (getStatus(m, p.id, TPS[i]) !== "realizado") return i + 2;
+  return TPS.length + 2;
 }
 
 function countOverdue(m: TpMap, pid: string): number {
@@ -108,7 +102,6 @@ export function PreViagemKanban({ onViewParticipant }: { onViewParticipant?: (id
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
-  // Todo participante aparece no board: os sem contrato/pagamento ficam em "Entrada".
   const parts = allParts;
   const tpMap = useMemo(() => buildTpMap(tps), [tps]);
   const activePart = activeId ? parts.find((p) => p.id === activeId) ?? null : null;
@@ -122,25 +115,22 @@ export function PreViagemKanban({ onViewParticipant }: { onViewParticipant?: (id
     if (e.over?.id == null) return;
     const target = COLS.indexOf(String(e.over.id));
     const current = getStageIndex(tpMap, part);
-    if (target <= 0 || target === current) return; // não é possível arrastar de volta para "Entrada"
+    if (target < 0 || target === current) return;
 
-    // Sair de "Entrada" confirma contrato + pagamento automaticamente, para qualquer coluna à frente.
     const patch: Partial<Participant> = {};
-    if (!isJourneyReady(part)) { patch.pagamento_status = "confirmado"; patch.contrato_status = "assinado"; }
-
-    if (target === 1) {
-      // "Aguardando formulário": zera o sinal de formulário preenchido (regressão manual).
+    if (target === 0) {
+      // "Formulário Enviado": zera o sinal de formulário preenchido (regressão manual).
       if (part.form_synced_at) patch.form_synced_at = null;
     } else {
-      // "Formulário preenchido" (2) ou qualquer touchpoint à frente — marca o formulário como
+      // "Formulário preenchido" (1) ou qualquer touchpoint à frente — marca o formulário como
       // preenchido manualmente, caso ainda não tenha vindo do formulário público.
       if (!part.form_synced_at) patch.form_synced_at = new Date().toISOString();
     }
     if (Object.keys(patch).length) updateParticipant.mutate({ id: pid, patch });
 
     // Touchpoints: coluna N = etapas anteriores realizadas, N em diante zeradas. Nas colunas
-    // "aguardando formulário"/"formulário preenchido" (1 e 2) todos ficam zerados.
-    const tpTarget = target - 3;
+    // "formulário enviado"/"formulário preenchido" (0 e 1) todos ficam zerados.
+    const tpTarget = target - 2;
     const patches = TPS
       .map((code, i) => ({ participant_id: pid, touchpoint_code: code, status: i < tpTarget ? "realizado" : "nao_iniciado" }))
       .filter((t) => getStatus(tpMap, pid, t.touchpoint_code) !== t.status);
@@ -223,7 +213,7 @@ function CardInner({ p, tpMap, overlay, onView }: { p: Participant; tpMap: TpMap
   const done = TPS.filter((c) => getStatus(tpMap, p.id, c) === "realizado").length;
   const stageIdx = getStageIndex(tpMap, p);
   const overdue = countOverdue(tpMap, p.id);
-  const next = stageIdx >= 3 && stageIdx - 3 < TPS.length ? TPS[stageIdx - 3] : null;
+  const next = stageIdx >= 2 && stageIdx - 2 < TPS.length ? TPS[stageIdx - 2] : null;
   const pct = Math.round((done / TPS.length) * 100);
   const body = (
     <>
@@ -253,10 +243,8 @@ function CardInner({ p, tpMap, overlay, onView }: { p: Participant; tpMap: TpMap
         {next
           ? <><i className="ti ti-arrow-right" /> Próxima: <strong>{next} · {TP_NAMES[next]}</strong> <span className="pv-next-date">{getTpDateLabel(next)}</span></>
           : stageIdx === 0
-          ? <><i className="ti ti-check" /> Pagamento confirmado — aguardando início da jornada</>
-          : stageIdx === 1
           ? <><i className="ti ti-mail-forward" /> Aguardando preenchimento do formulário</>
-          : stageIdx === 2
+          : stageIdx === 1
           ? <><i className="ti ti-clipboard-check" /> Pronto para iniciar a jornada</>
           : <><i className="ti ti-confetti" /> Jornada concluída</>}
       </div>
