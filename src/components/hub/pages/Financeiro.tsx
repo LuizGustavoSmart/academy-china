@@ -43,16 +43,21 @@ export function FinanceiroPage() {
   return (
     <div className="main">
       <div className="metrics" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
-        <Metric icon="ti-file-check" label="Valor total em contratos fechados" value={fmtBRL(totalContratos)} sub={`${signed.length} contrato(s) assinado(s)`} cls="metric-ok" />
-        <Metric icon="ti-check" label="Valor recebido" value={fmtBRL(recebido)} sub={`${parcelasPagas.length} parcela(s) paga(s)`} cls="metric-ok" />
-        <Metric icon="ti-clock-dollar" label="Valor a receber" value={fmtBRL(aReceber)} sub="contratos fechados menos recebido" />
-        <Metric icon="ti-trending-down" label="Custos e despesas totais" value={fmtBRL(custoTotal)} sub={`câmbio adotado R$ ${fin.cambio.toFixed(2).replace(".", ",")}`} cls="metric-warn" />
+        <Metric icon="ti-file-check" label="Valor total em contratos fechados" value={fmtBRL(totalContratos)} sub={`${signed.length} contrato(s) assinado(s)`} cls="metric-ok"
+          tooltip="Soma do valor cheio de todos os participantes com contrato assinado. É a receita total já contratada, independentemente de quanto já foi pago." />
+        <Metric icon="ti-check" label="Valor recebido" value={fmtBRL(recebido)} sub={`${parcelasPagas.length} parcela(s) paga(s)`} cls="metric-ok"
+          tooltip="Soma de todas as parcelas marcadas como pagas nos contratos assinados. É o dinheiro efetivamente em caixa até agora." />
+        <Metric icon="ti-clock-dollar" label="Valor a receber" value={fmtBRL(aReceber)} sub="contratos fechados menos recebido"
+          tooltip="Saldo ainda a entrar: valor total em contratos fechados menos o valor já recebido. Cai a cada parcela paga e sobe quando um novo contrato é assinado." />
+        <Metric icon="ti-trending-down" label="Custos e despesas totais" value={fmtBRL(custoTotal)} sub={`câmbio adotado R$ ${fin.cambio.toFixed(2).replace(".", ",")}`} cls="metric-warn"
+          tooltip="Soma de todos os custos cadastrados na estrutura de custos abaixo, já convertidos pelo câmbio adotado (R$/USD)." />
         <Metric
           icon="ti-chart-line"
           label="Margem estimada"
           value={totalContratos > 0 ? `${margem.toFixed(0)}%` : "—"}
           sub={totalContratos > 0 ? `${fmtBRL(totalContratos - custoTotal)} após custos` : "aguardando contratos assinados"}
           cls={totalContratos > 0 && margem < 0 ? "metric-danger" : "metric-ok"}
+          tooltip="Percentual da receita contratada que sobra depois de descontar todos os custos. Calculada como (contratos fechados − custos) ÷ contratos fechados."
         />
       </div>
       <div className="nota-estrategica">
@@ -329,10 +334,17 @@ function ParticipantFinanceModal({
   );
 }
 
-function Metric({ icon, label, value, sub, cls }: any) {
+function Metric({ icon, label, value, sub, cls, tooltip }: any) {
   return (
     <div className="metric-card">
-      <div className="metric-label"><i className={`ti ${icon}`} />{label}</div>
+      <div className="metric-label">
+        <i className={`ti ${icon}`} />{label}
+        {tooltip && (
+          <span className="metric-info" tabIndex={0} data-tooltip={tooltip} aria-label={tooltip}>
+            <i className="ti ti-info-circle" />
+          </span>
+        )}
+      </div>
       <div className={`metric-value ${cls ?? ""}`}>{value}</div>
       <div className="metric-sub">{sub}</div>
     </div>

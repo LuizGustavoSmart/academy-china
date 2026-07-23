@@ -41,7 +41,8 @@ export function DashboardPage() {
   return (
     <div className="main">
       <div className="metrics" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
-        <MetricCard icon="ti-users" label="Leads no funil" value={String(totalFunil)} sub={`${leadsAtivos} em negociação ativa`} />
+        <MetricCard icon="ti-users" label="Leads no funil" value={String(totalFunil)} sub={`${leadsAtivos} em negociação ativa`}
+          tooltip="Leads ainda em aberto no funil comercial: exclui os declinados e os que já avançaram para Confirmado ou Contrato. O subtítulo mostra quantos estão em etapa de negociação ativa." />
         <MetricCard
           icon="ti-check"
           label="Confirmados"
@@ -50,9 +51,12 @@ export function DashboardPage() {
           valueClass="metric-ok"
           tooltip="Soma das pessoas nas colunas Confirmados e Contratos do pipeline Comercial, incluindo participantes exibidos em Contratos que ainda não possuem um lead correspondente. O total é atualizado automaticamente conforme o pipeline."
         />
-        <MetricCard icon="ti-calendar" label="Duração da missão" value="9 dias" sub="Pequim · Xangai · Hangzhou" />
-        <MetricCard icon="ti-cash" label="Pagamentos recebidos" value={fmtBRL(pagamentosRecebidos)} sub={`${paidInstallments.length} parcela(s) paga(s) de contratos assinados`} valueClass="metric-ok" />
-        <MetricCard icon="ti-alert-circle" label="Valor restante para o mínimo viável" value={fmtBRL(falta)} sub={`mínimo viável: ${fmtBRL(minimoViavel)}`} valueClass="metric-danger" />
+        <MetricCard icon="ti-calendar" label="Duração da missão" value="9 dias" sub="Pequim · Xangai · Hangzhou"
+          tooltip="Duração total da viagem à China: 9 dias percorrendo Pequim (capital política), Xangai (capital financeira) e Hangzhou (capital tecnológica)." />
+        <MetricCard icon="ti-cash" label="Pagamentos recebidos" value={fmtBRL(pagamentosRecebidos)} sub={`${paidInstallments.length} parcela(s) paga(s) de contratos assinados`} valueClass="metric-ok"
+          tooltip="Soma das parcelas já marcadas como pagas, considerando apenas participantes com contrato assinado. É o dinheiro efetivamente em caixa até agora." />
+        <MetricCard icon="ti-alert-circle" label="Valor restante para o mínimo viável" value={fmtBRL(falta)} sub={`mínimo viável: ${fmtBRL(minimoViavel)}`} valueClass="metric-danger"
+          tooltip="Quanto ainda falta receber para atingir o faturamento mínimo que torna a missão viável (R$ 1.800.000). Diminui conforme as parcelas são pagas." />
       </div>
 
       <div className="two-col">

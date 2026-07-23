@@ -70,12 +70,18 @@ function ComercialDash() {
   return (
     <div className="main">
       <div className="metrics" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))" }}>
-        <Metric icon="ti-users" label="Leads ativos" value={String(ativos)} sub="ainda no funil comercial" />
-        <Metric icon="ti-trending-up" label="Em negociação" value={String(emNegociacao)} sub="etapa Negociação" cls="metric-warn" />
-        <Metric icon="ti-check" label="Confirmados" value={String(confirmados)} sub="coluna P6 do pipeline" cls="metric-ok" />
-        <Metric icon="ti-file-text" label="Contratos" value={String(contratos)} sub="coluna P7 do pipeline" cls="metric-warn" />
-        <Metric icon="ti-user-x" label="Leads declinados" value={String(declinados.length)} sub="recusaram / desistiram" cls="metric-danger" />
-        <Metric icon="ti-alert-circle" label="Pendências" value={String(pendOpen)} sub="para operacionalizar" cls="metric-danger" />
+        <Metric icon="ti-users" label="Leads ativos" value={String(ativos)} sub="ainda no funil comercial"
+          tooltip="Todos os leads que continuam no funil comercial — exclui apenas os declinados. Espelha a soma das colunas do Pipeline (fora a coluna Declinado)." />
+        <Metric icon="ti-trending-up" label="Em negociação" value={String(emNegociacao)} sub="etapa Negociação" cls="metric-warn"
+          tooltip="Leads que estão na etapa de Negociação do funil — já foram qualificados, mas ainda não confirmaram participação." />
+        <Metric icon="ti-check" label="Confirmados" value={String(confirmados)} sub="coluna P6 do pipeline" cls="metric-ok"
+          tooltip="Leads na coluna Confirmado (P6) do pipeline: já disseram sim à missão, mas ainda não assinaram contrato." />
+        <Metric icon="ti-file-text" label="Contratos" value={String(contratos)} sub="coluna P7 do pipeline" cls="metric-warn"
+          tooltip="Leads na coluna Contrato (P7) do pipeline, somados aos participantes já confirmados que ainda não possuem um lead correspondente." />
+        <Metric icon="ti-user-x" label="Leads declinados" value={String(declinados.length)} sub="recusaram / desistiram" cls="metric-danger"
+          tooltip="Leads que recusaram ou desistiram. Saem do funil ativo, mas permanecem no histórico e podem ser reativados a qualquer momento." />
+        <Metric icon="ti-alert-circle" label="Pendências" value={String(pendOpen)} sub="para operacionalizar" cls="metric-danger"
+          tooltip="Pendências da fase comercial ainda em aberto (não resolvidas) que precisam ser operacionalizadas pela equipe." />
       </div>
       <div className="nota-critica">
         <strong><i className="ti ti-alert-triangle" /> Risco principal:</strong> O gatilho de escassez do P5 só funciona com controle de vagas em tempo real.
@@ -84,10 +90,17 @@ function ComercialDash() {
   );
 }
 
-function Metric({ icon, label, value, sub, cls }: any) {
+function Metric({ icon, label, value, sub, cls, tooltip }: any) {
   return (
     <div className="metric-card">
-      <div className="metric-label"><i className={`ti ${icon}`} />{label}</div>
+      <div className="metric-label">
+        <i className={`ti ${icon}`} />{label}
+        {tooltip && (
+          <span className="metric-info" tabIndex={0} data-tooltip={tooltip} aria-label={tooltip}>
+            <i className="ti ti-info-circle" />
+          </span>
+        )}
+      </div>
       <div className={`metric-value ${cls ?? ""}`}>{value}</div>
       <div className="metric-sub">{sub}</div>
     </div>
