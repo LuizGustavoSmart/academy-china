@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      custos: {
+        Row: {
+          categoria: string
+          created_at: string
+          data_vencimento: string | null
+          descricao: string | null
+          id: string
+          ordem: number
+          tipo: string
+          titulo: string
+          updated_at: string
+          valor_fixo: number
+          valor_variavel: number
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          data_vencimento?: string | null
+          descricao?: string | null
+          id?: string
+          ordem?: number
+          tipo?: string
+          titulo: string
+          updated_at?: string
+          valor_fixo?: number
+          valor_variavel?: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          data_vencimento?: string | null
+          descricao?: string | null
+          id?: string
+          ordem?: number
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+          valor_fixo?: number
+          valor_variavel?: number
+        }
+        Relationships: []
+      }
       financeiro_config: {
         Row: {
           cambio: number
