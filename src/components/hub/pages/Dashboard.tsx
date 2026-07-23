@@ -1,4 +1,4 @@
-import { useCustos, useFinanceiroConfig, useLeads, useParticipants, usePendencias, custoValor, categoriaLabel, fmtBRL, isDeclined, isConfirmedLead, pipelineStage, NEGOTIATION_STAGES, STAGE_NEGOCIACAO } from "@/lib/hub-api";
+import { useCustos, useFinanceiroConfig, useLeads, useParcelasPagamento, useParticipants, usePendencias, custoValor, categoriaLabel, fmtBRL, isDeclined, isConfirmedLead, pipelineStage, NEGOTIATION_STAGES, STAGE_NEGOCIACAO } from "@/lib/hub-api";
 
 export function DashboardPage() {
   const { data: participants = [] } = useParticipants();
@@ -6,15 +6,18 @@ export function DashboardPage() {
   const { data: pendencias = [] } = usePendencias();
   const { data: fin } = useFinanceiroConfig();
   const { data: custos = [] } = useCustos();
+  const { data: parcelas = [] } = useParcelasPagamento();
 
-  const paidParticipants = participants.filter((p) => p.pagamento_status === "confirmado");
+  const signedParticipants = participants.filter((p) => p.contrato_status === "assinado");
+  const signedIds = new Set(signedParticipants.map((participant) => participant.id));
+  const paidInstallments = parcelas.filter((parcela) => parcela.paga && signedIds.has(parcela.participant_id));
   const confirmedLeadNames = leads
     .filter(isConfirmedLead)
     .map((lead) => lead.nome.toLowerCase().trim());
-  const paidParticipantNames = paidParticipants.map((participant) => participant.nome.toLowerCase().trim());
+  const signedParticipantNames = signedParticipants.map((participant) => participant.nome.toLowerCase().trim());
   // Um participante promovido a partir de um lead confirmado conta só uma vez.
-  const confirmedTotal = new Set([...confirmedLeadNames, ...paidParticipantNames]).size;
-  const pagamentosRecebidos = paidParticipants.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
+  const confirmedTotal = new Set([...confirmedLeadNames, ...signedParticipantNames]).size;
+  const pagamentosRecebidos = paidInstallments.reduce((s, parcela) => s + Number(parcela.valor || 0), 0);
   const minVagas = fin?.min_vagas ?? 20;
   const tierStandard = Number(fin?.tier_standard ?? 93600);
   const breakEvenTotal = minVagas * tierStandard;
@@ -38,7 +41,7 @@ export function DashboardPage() {
         <MetricCard icon="ti-users" label="Leads no funil" value={String(totalFunil)} sub={`${leadsAtivos} em negociação ativa`} />
         <MetricCard icon="ti-check" label="Confirmados" value={String(confirmedTotal)} sub={`meta: ${fin?.min_vagas ?? 20}–${fin?.meta_vagas ?? 25} vagas`} valueClass="metric-ok" />
         <MetricCard icon="ti-calendar" label="Duração da missão" value="9 dias" sub="Pequim · Xangai · Hangzhou" />
-        <MetricCard icon="ti-cash" label="Pagamentos recebidos" value={fmtBRL(pagamentosRecebidos)} sub={`${paidParticipants.length} de ${fin?.min_vagas ?? 20}–${fin?.meta_vagas ?? 25} participantes pagaram`} valueClass="metric-ok" />
+        <MetricCard icon="ti-cash" label="Pagamentos recebidos" value={fmtBRL(pagamentosRecebidos)} sub={`${paidInstallments.length} parcela(s) paga(s) de contratos assinados`} valueClass="metric-ok" />
         <MetricCard icon="ti-alert-circle" label="Faltam para o ponto de equilíbrio" value={fmtBRL(falta)} sub={`${minVagas} pax × ${fmtBRL(tierStandard)} — base mínima`} valueClass="metric-danger" />
       </div>
 

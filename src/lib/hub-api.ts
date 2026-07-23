@@ -132,6 +132,19 @@ export type Custo = {
   created_at: string;
 };
 
+export type ParcelaPagamento = {
+  id: string;
+  participant_id: string;
+  numero: number;
+  data_vencimento: string | null;
+  valor: number;
+  paga: boolean;
+  data_pagamento: string | null;
+  created_at: string;
+  updated_at: string;
+  local?: boolean;
+};
+
 export type Mensagem = {
   id: string;
   etapa: string;
@@ -236,6 +249,7 @@ export function useUpdateParticipant() {
     onSuccess: (_d: any, v: any) => {
       qc.invalidateQueries({ queryKey: ["hub_participants"] });
       qc.invalidateQueries({ queryKey: ["hub_participant", v.id] });
+      qc.invalidateQueries({ queryKey: ["hub_parcelas_pagamento"] });
     },
   });
 }
@@ -651,6 +665,133 @@ export function useUpdateFinanceiroConfig() {
   });
 }
 
+// ────────── PARCELAS DE PAGAMENTO ──────────
+type LocalParcelaOverride = {
+  data_vencimento?: string | null;
+  paga?: boolean;
+  data_pagamento?: string | null;
+};
+
+const LOCAL_PARCELAS_KEY = "academy-china:parcelas-pagamento";
+
+function readLocalParcelas(): Record<string, LocalParcelaOverride> {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(LOCAL_PARCELAS_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+function writeLocalParcelas(value: Record<string, LocalParcelaOverride>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LOCAL_PARCELAS_KEY, JSON.stringify(value));
+}
+
+function buildLocalParcelas(participants: Participant[]): ParcelaPagamento[] {
+  const overrides = readLocalParcelas();
+  const now = new Date().toISOString();
+
+  return participants.flatMap((participant) => {
+    const quantidade = Math.max(1, Number(participant.parcelas) || 1);
+    const totalCentavos = Math.round(Number(participant.valor_pago || 0) * 100);
+    const baseCentavos = Math.floor(totalCentavos / quantidade);
+
+    return Array.from({ length: quantidade }, (_, index) => {
+      const numero = index + 1;
+      const id = `local:${participant.id}:${numero}`;
+      const override = overrides[id] ?? {};
+      const valorCentavos = numero === quantidade
+        ? totalCentavos - baseCentavos * (quantidade - 1)
+        : baseCentavos;
+      const paga = override.paga ?? participant.pagamento_status === "confirmado";
+
+      return {
+        id,
+        participant_id: participant.id,
+        numero,
+        data_vencimento: override.data_vencimento ?? null,
+        valor: valorCentavos / 100,
+        paga,
+        data_pagamento: override.data_pagamento ?? (paga ? now : null),
+        created_at: now,
+        updated_at: now,
+        local: true,
+      };
+    });
+  });
+}
+
+export function useParcelasPagamento(participantId?: string) {
+  const qc = useQueryClient();
+  return useQuery<ParcelaPagamento[]>({
+    queryKey: ["hub_parcelas_pagamento", participantId ?? "all"],
+    queryFn: async () => {
+      let query = sb.from("parcelas_pagamento").select("*").order("numero");
+      if (participantId) query = query.eq("participant_id", participantId);
+      const { data, error } = await query;
+      if (error) {
+        let participants = qc.getQueryData<Participant[]>(["hub_participants"]) ?? [];
+        if (participantId) {
+          const cached = qc.getQueryData<Participant | null>(["hub_participant", participantId]);
+          if (cached) participants = [cached];
+          else participants = participants.filter((participant) => participant.id === participantId);
+        }
+        if (participants.length === 0) {
+          let participantQuery = sb.from("participants").select("*");
+          if (participantId) participantQuery = participantQuery.eq("id", participantId);
+          const fallback = await participantQuery;
+          if (fallback.error) throw error;
+          participants = fallback.data ?? [];
+        }
+        return buildLocalParcelas(participants);
+      }
+      return data ?? [];
+    },
+  });
+}
+
+export function useUpdateParcelaPagamento() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: Pick<Partial<ParcelaPagamento>, "data_vencimento" | "paga">;
+    }) => {
+      if (id.startsWith("local:")) {
+        const overrides = readLocalParcelas();
+        const current = overrides[id] ?? {};
+        overrides[id] = {
+          ...current,
+          ...patch,
+          ...(patch.paga !== undefined
+            ? { data_pagamento: patch.paga ? new Date().toISOString() : null }
+            : {}),
+        };
+        writeLocalParcelas(overrides);
+        return;
+      }
+      const payload: Record<string, unknown> = {
+        ...patch,
+        updated_at: new Date().toISOString(),
+      };
+      if (patch.paga !== undefined) {
+        payload.data_pagamento = patch.paga ? new Date().toISOString() : null;
+      }
+      const { error } = await sb.from("parcelas_pagamento").update(payload).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["hub_parcelas_pagamento"] });
+      qc.invalidateQueries({ queryKey: ["hub_participants"] });
+      qc.invalidateQueries({ queryKey: ["hub_participant"] });
+    },
+  });
+}
+
 // ────────── CUSTOS ──────────
 export function useCustos() {
   return useQuery<Custo[]>({
@@ -777,7 +918,12 @@ export const pipelineStage = (passo: number): number =>
 export const passoLabel = (n: number): string => PASSO_LABELS[n] ?? "Etapa anterior (legado)";
 
 export const fmtBRL = (n: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(n);
+  new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(n);
 
 export const respLabel = (r: string) =>
   r === "roque" ? "Roque" : r === "caetano" ? "Caetano" : "Caetano + Roque";

@@ -1,6 +1,6 @@
 import { useState, useSyncExternalStore } from "react";
 import { intervalToDuration } from "date-fns";
-import { useParticipants, useTouchpoints, useUpsertTouchpoint, type Participant, type Touchpoint } from "@/lib/hub-api";
+import { useParcelasPagamento, useParticipants, useTouchpoints, useUpsertTouchpoint, type Participant, type Touchpoint } from "@/lib/hub-api";
 import { MensagensAccordion } from "@/components/hub/MensagensAccordion";
 import { PendenciasList } from "@/components/hub/PendenciasList";
 import { PreViagemKanban } from "@/components/hub/PreViagemKanban";
@@ -182,9 +182,15 @@ function Metric({ icon, label, value, sub }: { icon: string; label: string; valu
 
 function TouchpointGrid({ onViewParticipant }: { onViewParticipant?: (id: string) => void }) {
   const { data: allParts = [] } = useParticipants();
+  const { data: parcelas = [] } = useParcelasPagamento();
   const { data: tps = [] } = useTouchpoints();
   const upsert = useUpsertTouchpoint();
-  const parts = allParts.filter((p) => p.pagamento_status === "confirmado" && p.contrato_status === "assinado");
+  const parts = allParts.filter((participant) => {
+    const participantParcelas = parcelas.filter((parcela) => parcela.participant_id === participant.id);
+    return participant.contrato_status === "assinado"
+      && participantParcelas.length > 0
+      && participantParcelas.every((parcela) => parcela.paga);
+  });
   const getStatus = (pid: string, code: string) => tps.find((t) => t.participant_id === pid && t.touchpoint_code === code)?.status ?? "nao_iniciado";
   const handleClick = (pid: string, code: string, st: string, state: TpState) => {
     if (state === "future") return;
@@ -260,7 +266,13 @@ function Legend({ cls, label }: { cls: string; label: string }) {
 
 function PartsCompactList({ onViewParticipant }: { onViewParticipant?: (id: string) => void }) {
   const { data: allParts = [] } = useParticipants();
-  const parts = allParts.filter((p) => p.pagamento_status === "confirmado" && p.contrato_status === "assinado");
+  const { data: parcelas = [] } = useParcelasPagamento();
+  const parts = allParts.filter((participant) => {
+    const participantParcelas = parcelas.filter((parcela) => parcela.participant_id === participant.id);
+    return participant.contrato_status === "assinado"
+      && participantParcelas.length > 0
+      && participantParcelas.every((parcela) => parcela.paga);
+  });
   return (
     <div className="main">
       <div className="section-label" style={{ marginTop: 0 }}>Participantes confirmados — dados relevantes para o pré-operacional</div>

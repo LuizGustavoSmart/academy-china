@@ -3,17 +3,23 @@ import {
   useCreateParticipant,
   useCreateLead,
   useDeleteParticipant,
+  useParcelasPagamento,
   useParticipants,
+  useUpdateParcelaPagamento,
   useUpdateParticipant,
+  fmtBRL,
+  type ParcelaPagamento,
   type Participant,
 } from "@/lib/hub-api";
 import { ConfirmDialog, Modal } from "@/components/hub/Modal";
 import { EditableField } from "@/components/hub/Editable";
+import { SmartNumberInput } from "@/components/hub/SmartNumberInput";
 import { ParticipantTimeline } from "@/components/hub/ParticipantTimeline";
 
 const STATUS_BADGE: Record<string, string> = {
   confirmado: "badge-ok",
   pendente: "badge-warn",
+  parcial: "badge-blue",
   em_andamento: "badge-warn",
   contratado: "badge-ok",
 };
@@ -23,7 +29,14 @@ function statusBadge(s: string) {
 }
 
 function labelStatus(s: string) {
-  return ({ confirmado: "Confirmado", pendente: "Pendente", em_andamento: "Em andamento", contratado: "Contratado" } as any)[s] ?? s;
+  return ({ confirmado: "Confirmado", pendente: "Pendente", parcial: "Parcial", em_andamento: "Em andamento", contratado: "Contratado" } as any)[s] ?? s;
+}
+
+function paymentStatus(parcelas: ParcelaPagamento[]) {
+  const pagas = parcelas.filter((parcela) => parcela.paga).length;
+  if (parcelas.length > 0 && pagas === parcelas.length) return "confirmado";
+  if (pagas > 0) return "parcial";
+  return "pendente";
 }
 
 /** null/"" = ainda não respondeu essa etapa do formulário (alguns registros mais antigos, sem
@@ -277,6 +290,7 @@ function downloadPhotosSequentially(participants: Participant[]) {
 
 export function ParticipantesPage({ openId, setOpenId }: { openId: string | null; setOpenId: (id: string | null) => void }) {
   const { data: all = [] } = useParticipants();
+  const { data: allParcelas = [] } = useParcelasPagamento();
   // Conta como participante quem já assinou contrato OU respondeu o formulário público
   // (mesmo critério da coluna "Entrada" no Kanban de pré-viagem).
   const list = all.filter((p) => p.contrato_status === "assinado" || p.origem === "formulario");
@@ -364,7 +378,7 @@ export function ParticipantesPage({ openId, setOpenId }: { openId: string | null
                 <td>{restricaoBadge(p.restricoes_alimentares)}</td>
                 <td>{statusBadge(p.seguro_status)}</td>
                 <td>{statusBadge(p.voo_ida_status)}</td>
-                <td>{statusBadge(p.pagamento_status)}</td>
+                <td>{statusBadge(paymentStatus(allParcelas.filter((parcela) => parcela.participant_id === p.id)))}</td>
                 <td>{statusBadge(p.status)}</td>
                 <td>
                   {p.foto_url ? (
@@ -464,14 +478,13 @@ export function ParticipantModal({ open, onClose, initial }: { open: boolean; on
         </div>
         <div className="form-group">
           <label className="form-label">Valor (R$)</label>
-          <input className="form-input" type="number" value={form.valor_pago ?? 0} onChange={(e) => setForm({ ...form, valor_pago: Number(e.target.value) })} />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Pagamento</label>
-          <select className="form-select" value={form.pagamento_status} onChange={(e) => setForm({ ...form, pagamento_status: e.target.value })}>
-            <option value="pendente">Pendente</option>
-            <option value="confirmado">Confirmado</option>
-          </select>
+          <SmartNumberInput
+            value={Number(form.valor_pago ?? 0)}
+            kind="currency"
+            min={0}
+            ariaLabel="Valor do contrato"
+            onValueChange={(value) => setForm((current) => ({ ...current, valor_pago: value }))}
+          />
         </div>
         <div className="form-group" style={{ gridColumn: "span 2" }}>
           <label className="form-label">Observações</label>
@@ -489,6 +502,7 @@ export function ParticipantModal({ open, onClose, initial }: { open: boolean; on
 function ProfileView({ participant, onBack }: { participant: Participant; onBack: () => void }) {
   const update = useUpdateParticipant();
   const del = useDeleteParticipant();
+  const { data: parcelas = [], isLoading: loadingParcelas, isError: parcelasError } = useParcelasPagamento(participant.id);
   const [confirmDel, setConfirmDel] = useState(false);
   const p = participant;
   const initials = (p.nome || "?").split(" ").map((s) => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
@@ -510,7 +524,7 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
           <div style={{ fontSize: 18, fontWeight: 500 }}>{p.nome}</div>
           <div style={{ fontSize: 13, color: "var(--text2)", marginTop: 2 }}>{[p.cargo, p.empresa, p.cidade].filter(Boolean).join(" · ")}</div>
           <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {statusBadge(p.pagamento_status === "confirmado" ? "confirmado" : "pendente")}
+            {statusBadge(paymentStatus(parcelas))}
             <span className={`badge ${p.voo_ida_status === "confirmado" ? "badge-ok" : "badge-warn"}`}>Voo {p.voo_ida_status === "confirmado" ? "confirmado" : "pendente"}</span>
           </div>
         </div>
@@ -591,11 +605,31 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
             <StatusRow label="Tier" field="tier" value={p.tier} onSave={save} options={["standard","premium"]} />
             <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 12 }}>
               <span style={{ color: "var(--text3)" }}>Valor (R$)</span>
-              <EditableField value={String(p.valor_pago)} onSave={(v) => save({ valor_pago: Number(v) || 0 })} />
+              <div style={{ width: 160 }}>
+                <SmartNumberInput
+                  value={Number(p.valor_pago || 0)}
+                  kind="currency"
+                  min={0}
+                  ariaLabel="Valor do contrato"
+                  onCommit={(value) => {
+                    if (value !== Number(p.valor_pago || 0)) save({ valor_pago: value });
+                  }}
+                />
+              </div>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 12 }}>
               <span style={{ color: "var(--text3)" }}>Parcelas (x)</span>
-              <EditableField value={String(p.parcelas ?? 1)} onSave={(v) => save({ parcelas: Math.max(1, Number(v) || 1) })} />
+              <div style={{ width: 92 }}>
+                <SmartNumberInput
+                  value={Math.max(1, Number(p.parcelas) || 1)}
+                  kind="integer"
+                  min={1}
+                  ariaLabel="Número de parcelas"
+                  onCommit={(value) => {
+                    if (value !== Math.max(1, Number(p.parcelas) || 1)) save({ parcelas: value });
+                  }}
+                />
+              </div>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 12 }}>
               <span style={{ color: "var(--text3)" }}>Valor por parcela (R$)</span>
@@ -603,11 +637,11 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
                 {((p.valor_pago ?? 0) / Math.max(1, p.parcelas ?? 1)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </span>
             </div>
-            <StatusRow label="Pagamento" field="pagamento_status" value={p.pagamento_status} onSave={save} options={["pendente","confirmado"]} />
             <StatusRow label="Contrato" field="contrato_status" value={p.contrato_status} onSave={save} options={["pendente","assinado"]} />
           </div>
         </div>
       </div>
+      <ParcelasPagamentoPanel parcelas={parcelas} loading={loadingParcelas} error={parcelasError} />
       <div className="panel" style={{ marginBottom: 20 }}>
         <div className="panel-header"><i className="ti ti-meat" /> Saúde & restrições</div>
         <div className="panel-body">
@@ -630,6 +664,92 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
         </div>
       </div>
       <ConfirmDialog open={confirmDel} onClose={() => setConfirmDel(false)} onConfirm={() => del.mutate(p.id, { onSuccess: onBack })} title="Excluir participante" message={`Tem certeza que deseja excluir ${p.nome}? Essa ação não pode ser desfeita.`} confirmLabel="Excluir" />
+    </div>
+  );
+}
+
+function ParcelasPagamentoPanel({
+  parcelas,
+  loading,
+  error,
+}: {
+  parcelas: ParcelaPagamento[];
+  loading: boolean;
+  error: boolean;
+}) {
+  const update = useUpdateParcelaPagamento();
+  const recebido = parcelas
+    .filter((parcela) => parcela.paga)
+    .reduce((total, parcela) => total + Number(parcela.valor || 0), 0);
+  const total = parcelas.reduce((sum, parcela) => sum + Number(parcela.valor || 0), 0);
+  const localMode = parcelas.some((parcela) => parcela.local);
+
+  return (
+    <div className="panel" style={{ marginBottom: 20 }}>
+      <div className="panel-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <span><i className="ti ti-calendar-dollar" /> Parcelas de pagamento</span>
+        {!loading && !error && (
+          <span style={{ fontSize: 11, color: "var(--text3)", fontWeight: 400 }}>
+            {localMode && <span className="badge badge-warn" style={{ marginRight: 8 }}>Teste local</span>}
+            Recebido: <strong style={{ color: "var(--teal)" }}>{fmtBRL(recebido)}</strong> de {fmtBRL(total)}
+          </span>
+        )}
+      </div>
+      <div className="panel-body">
+        {loading && <div style={{ fontSize: 12, color: "var(--text3)", padding: 8 }}>Carregando parcelas…</div>}
+        {error && (
+          <div className="modal-inline-error">
+            <i className="ti ti-alert-circle" /> Não foi possível carregar as parcelas. Verifique se a migration do banco foi aplicada.
+          </div>
+        )}
+        {!loading && !error && parcelas.length === 0 && (
+          <div style={{ fontSize: 12, color: "var(--text3)", textAlign: "center", padding: 12 }}>
+            As parcelas serão criadas automaticamente a partir dos dados financeiros.
+          </div>
+        )}
+        {!loading && !error && parcelas.length > 0 && (
+          <div className="table-wrap" style={{ border: "none" }}>
+            <table>
+              <thead>
+                <tr><th>Parcela</th><th>Vencimento</th><th>Valor</th><th style={{ textAlign: "center" }}>Paga</th></tr>
+              </thead>
+              <tbody>
+                {parcelas.map((parcela) => (
+                  <tr key={parcela.id}>
+                    <td style={{ fontWeight: 500 }}>{parcela.numero}ª parcela</td>
+                    <td>
+                      <input
+                        className="form-input"
+                        type="date"
+                        aria-label={`Vencimento da ${parcela.numero}ª parcela`}
+                        value={parcela.data_vencimento ?? ""}
+                        onChange={(event) => update.mutate({
+                          id: parcela.id,
+                          patch: { data_vencimento: event.target.value || null },
+                        })}
+                        style={{ maxWidth: 180, padding: "6px 8px" }}
+                      />
+                    </td>
+                    <td style={{ fontWeight: 500 }}>{fmtBRL(Number(parcela.valor))}</td>
+                    <td style={{ textAlign: "center" }}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Confirmar pagamento da ${parcela.numero}ª parcela`}
+                        checked={parcela.paga}
+                        disabled={update.isPending}
+                        onChange={(event) => update.mutate({
+                          id: parcela.id,
+                          patch: { paga: event.target.checked },
+                        })}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
