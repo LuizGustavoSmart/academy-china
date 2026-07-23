@@ -1,4 +1,4 @@
-import { useCustos, useFinanceiroConfig, useLeads, useParcelasPagamento, useParticipants, usePendencias, custoValor, categoriaLabel, fmtBRL, isDeclined, isConfirmedLead, pipelineStage, NEGOTIATION_STAGES, STAGE_NEGOCIACAO } from "@/lib/hub-api";
+import { useCustos, useFinanceiroConfig, useLeads, useParcelasPagamento, useParticipants, usePendencias, custoValor, categoriaLabel, fmtBRL, isDeclined, pipelineStage, NEGOTIATION_STAGES, STAGE_CONFIRMADO, STAGE_CONTRATO, STAGE_NEGOCIACAO } from "@/lib/hub-api";
 
 export function DashboardPage() {
   const { data: participants = [] } = useParticipants();
@@ -11,20 +11,23 @@ export function DashboardPage() {
   const signedParticipants = participants.filter((p) => p.contrato_status === "assinado");
   const signedIds = new Set(signedParticipants.map((participant) => participant.id));
   const paidInstallments = parcelas.filter((parcela) => parcela.paga && signedIds.has(parcela.participant_id));
-  const confirmedLeadNames = leads
-    .filter(isConfirmedLead)
-    .map((lead) => lead.nome.toLowerCase().trim());
-  const signedParticipantNames = signedParticipants.map((participant) => participant.nome.toLowerCase().trim());
-  // Um participante promovido a partir de um lead confirmado conta só uma vez.
-  const confirmedTotal = new Set([...confirmedLeadNames, ...signedParticipantNames]).size;
+  const confirmedPipelineLeads = leads.filter((lead) =>
+    !isDeclined(lead)
+    && [STAGE_CONFIRMADO, STAGE_CONTRATO].includes(pipelineStage(lead.passo)),
+  );
+  // O Pipeline também exibe em P7 participantes que ainda não possuem um lead
+  // correspondente. Mantemos a mesma regra aqui para os totais nunca divergirem.
+  const leadNames = new Set(leads.map((lead) => lead.nome.toLowerCase().trim()));
+  const orphanParticipants = participants.filter((participant) =>
+    !leadNames.has(participant.nome.toLowerCase().trim()),
+  );
+  const confirmedTotal = confirmedPipelineLeads.length + orphanParticipants.length;
   const pagamentosRecebidos = paidInstallments.reduce((s, parcela) => s + Number(parcela.valor || 0), 0);
-  const minVagas = fin?.min_vagas ?? 20;
-  const tierStandard = Number(fin?.tier_standard ?? 93600);
-  const breakEvenTotal = minVagas * tierStandard;
-  const falta = Math.max(0, breakEvenTotal - pagamentosRecebidos);
+  const minimoViavel = 1_800_000;
+  const falta = Math.max(0, minimoViavel - pagamentosRecebidos);
 
   const activeLeads = leads.filter((lead) =>
-    !isDeclined(lead) && !isConfirmedLead(lead),
+    !isDeclined(lead) && !confirmedPipelineLeads.some((confirmed) => confirmed.id === lead.id),
   );
   const totalFunil = activeLeads.length;
   const leadsAtivos = activeLeads.filter((l) => NEGOTIATION_STAGES.includes(l.passo)).length;
@@ -39,10 +42,17 @@ export function DashboardPage() {
     <div className="main">
       <div className="metrics" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
         <MetricCard icon="ti-users" label="Leads no funil" value={String(totalFunil)} sub={`${leadsAtivos} em negociação ativa`} />
-        <MetricCard icon="ti-check" label="Confirmados" value={String(confirmedTotal)} sub={`meta: ${fin?.min_vagas ?? 20}–${fin?.meta_vagas ?? 25} vagas`} valueClass="metric-ok" />
+        <MetricCard
+          icon="ti-check"
+          label="Confirmados"
+          value={String(confirmedTotal)}
+          sub={`meta: ${fin?.min_vagas ?? 20}–${fin?.meta_vagas ?? 25} vagas`}
+          valueClass="metric-ok"
+          tooltip="Soma das pessoas nas colunas Confirmados e Contratos do pipeline Comercial, incluindo participantes exibidos em Contratos que ainda não possuem um lead correspondente. O total é atualizado automaticamente conforme o pipeline."
+        />
         <MetricCard icon="ti-calendar" label="Duração da missão" value="9 dias" sub="Pequim · Xangai · Hangzhou" />
         <MetricCard icon="ti-cash" label="Pagamentos recebidos" value={fmtBRL(pagamentosRecebidos)} sub={`${paidInstallments.length} parcela(s) paga(s) de contratos assinados`} valueClass="metric-ok" />
-        <MetricCard icon="ti-alert-circle" label="Faltam para o ponto de equilíbrio" value={fmtBRL(falta)} sub={`${minVagas} pax × ${fmtBRL(tierStandard)} — base mínima`} valueClass="metric-danger" />
+        <MetricCard icon="ti-alert-circle" label="Valor restante para o mínimo viável" value={fmtBRL(falta)} sub={`mínimo viável: ${fmtBRL(minimoViavel)}`} valueClass="metric-danger" />
       </div>
 
       <div className="two-col">
@@ -80,13 +90,15 @@ export function DashboardPage() {
                 { p: 1, label: "P1 — Abordagem",   color: "var(--text3)" },
                 { p: 2, label: "P2 — Qualificação", color: "var(--purple)" },
                 { p: STAGE_NEGOCIACAO, label: "Negociação", color: "var(--amber)" },
-                { p: 6, label: "P6 — Contrato",    color: "#d85a30" },
-                { p: 7, label: "P7 — Confirmado",  color: "var(--teal)" },
+                { p: 6, label: "P6 — Confirmado",  color: "#d85a30" },
+                { p: 7, label: "P7 — Contrato",    color: "var(--teal)" },
                 { p: -1, label: "Declinado",        color: "#c0392b" },
               ];
-              const countStage = (p: number) => p === -1
-                ? leads.filter(isDeclined).length
-                : leads.filter((lead) => !isDeclined(lead) && pipelineStage(lead.passo) === p).length;
+              const countStage = (p: number) => {
+                if (p === -1) return leads.filter(isDeclined).length;
+                const leadCount = leads.filter((lead) => !isDeclined(lead) && pipelineStage(lead.passo) === p).length;
+                return p === STAGE_CONTRATO ? leadCount + orphanParticipants.length : leadCount;
+              };
               const max = Math.max(1, ...stages.map(({ p }) => countStage(p)));
               return stages.map(({ p, label, color }) => {
                 const count = countStage(p);
@@ -149,10 +161,31 @@ export function DashboardPage() {
   );
 }
 
-function MetricCard({ icon, label, value, sub, valueClass }: { icon: string; label: string; value: string; sub: string; valueClass?: string }) {
+function MetricCard({
+  icon,
+  label,
+  value,
+  sub,
+  valueClass,
+  tooltip,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+  sub: string;
+  valueClass?: string;
+  tooltip?: string;
+}) {
   return (
     <div className="metric-card">
-      <div className="metric-label"><i className={`ti ${icon}`} />{label}</div>
+      <div className="metric-label">
+        <i className={`ti ${icon}`} />{label}
+        {tooltip && (
+          <span className="metric-info" tabIndex={0} data-tooltip={tooltip} aria-label={tooltip}>
+            <i className="ti ti-info-circle" />
+          </span>
+        )}
+      </div>
       <div className={`metric-value ${valueClass ?? ""}`}>{value}</div>
       <div className="metric-sub">{sub}</div>
     </div>

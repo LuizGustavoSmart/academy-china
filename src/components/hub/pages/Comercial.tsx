@@ -5,7 +5,7 @@ import {
 } from "@dnd-kit/core";
 import {
   PASSO_LABELS, STAGE_CONFIRMADO, STAGE_CONTRATO, STAGE_NEGOCIACAO, STAGE_ORDER, NEGOTIATION_STAGES, passoLabel, pipelineStage,
-  fmtBRL, normalizeStatus, statusLabel, statusBadgeClass, isDeclined, isConfirmedLead, STATUS_OPTIONS, respAvatar,
+  normalizeStatus, statusLabel, statusBadgeClass, isDeclined, isConfirmedLead, STATUS_OPTIONS, respAvatar,
   useCreateLead, useDeleteLead, useLeads, useParticipants, usePendencias, useResponsaveis,
   useSetLeadResponsaveis, useUpdateLead, useUpdateParticipant, useCreateLeadActivity,
   useCreateResponsavel,
@@ -75,7 +75,6 @@ function ComercialDash() {
         <Metric icon="ti-check" label="Confirmados" value={String(confirmados)} sub="coluna P6 do pipeline" cls="metric-ok" />
         <Metric icon="ti-file-text" label="Contratos" value={String(contratos)} sub="coluna P7 do pipeline" cls="metric-warn" />
         <Metric icon="ti-user-x" label="Leads declinados" value={String(declinados.length)} sub="recusaram / desistiram" cls="metric-danger" />
-        <Metric icon="ti-currency-dollar" label="Ticket médio" value={fmtBRL(107250)} sub="R$ 99k–R$ 115,5k" />
         <Metric icon="ti-alert-circle" label="Pendências" value={String(pendOpen)} sub="para operacionalizar" cls="metric-danger" />
       </div>
       <div className="nota-critica">

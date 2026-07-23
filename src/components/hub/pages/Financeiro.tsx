@@ -9,6 +9,8 @@ import {
 import { Modal, ConfirmDialog } from "@/components/hub/Modal";
 import { SmartNumberInput } from "@/components/hub/SmartNumberInput";
 
+const VALOR_CENARIO_POR_PESSOA = 90_000;
+
 export function FinanceiroPage() {
   const { data: fin } = useFinanceiroConfig();
   const { data: participants = [] } = useParticipants();
@@ -19,8 +21,6 @@ export function FinanceiroPage() {
 
   if (!fin) return <div className="main">Carregando…</div>;
 
-  const tierStd = Number(fin.tier_standard);
-  const tierPrem = Number(fin.tier_premium);
   const meta = fin.meta_vagas;
   const signed = participants.filter((p) => p.contrato_status === "assinado");
   const signedIds = new Set(signed.map((p) => p.id));
@@ -30,7 +30,6 @@ export function FinanceiroPage() {
   const recebido = parcelasPagas.reduce((s, parcela) => s + Number(parcela.valor || 0), 0);
   const aReceber = Math.max(0, totalContratos - recebido);
   const custoTotal = custos.reduce((s, c) => s + custoValor(c), 0);
-  const ticketMedio = (tierStd + tierPrem) / 2;
   const margem = totalContratos > 0 ? ((totalContratos - custoTotal) / totalContratos) * 100 : 0;
   const localMode = parcelas.some((parcela) => parcela.local);
   const recebidoPorParticipante = new Map<string, number>();
@@ -108,7 +107,7 @@ export function FinanceiroPage() {
           <div className="panel-body">
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <Cenario title={`Atual — ${signed.length} contrato(s) fechado(s)`} badge="Realizado" badgeClass={totalContratos >= custoTotal ? "badge-ok" : "badge-warn"} receita={totalContratos} custo={custoTotal} bg="var(--surface2)" />
-              <Cenario title={`Meta — ${meta} pax × ${fmtBRL(ticketMedio)}`} badge="Cenário alvo" badgeClass="badge-ok" receita={meta * ticketMedio} custo={custoTotal} bg="var(--teal-light)" accent="var(--teal)" />
+              <Cenario title={`Meta — ${meta} pax × ${fmtBRL(VALOR_CENARIO_POR_PESSOA)}`} badge="Cenário alvo" badgeClass="badge-ok" receita={meta * VALOR_CENARIO_POR_PESSOA} custo={custoTotal} bg="var(--teal-light)" accent="var(--teal)" />
             </div>
             <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 12 }}>* Custos reais dependem de confirmação com parceiros locais. Câmbio adotado: R$ {fin.cambio.toFixed(2).replace(".", ",")} / USD.</div>
           </div>
@@ -147,6 +146,32 @@ function ParticipantFinanceModal({
   const maiorParcelaPaga = Math.max(0, ...pagas.map((parcela) => parcela.numero));
   const recebido = pagas.reduce((total, parcela) => total + Number(parcela.valor || 0), 0);
   const localMode = parcelas.some((parcela) => parcela.local);
+  const quantidadePreview = Math.max(1, Math.floor(form.parcelas));
+  const estruturaEmPrevia = quantidadePreview !== parcelas.length || form.valor_pago !== Number(participant.valor_pago || 0);
+  const totalCentavosPreview = Math.round(form.valor_pago * 100);
+  const baseCentavosPreview = Math.floor(totalCentavosPreview / quantidadePreview);
+  const existentesPorNumero = new Map(parcelas.map((parcela) => [parcela.numero, parcela]));
+  const parcelasExibidas = Array.from({ length: quantidadePreview }, (_, index) => {
+    const numero = index + 1;
+    const existente = existentesPorNumero.get(numero);
+    const valorCentavos = numero === quantidadePreview
+      ? totalCentavosPreview - baseCentavosPreview * (quantidadePreview - 1)
+      : baseCentavosPreview;
+    return existente
+      ? { ...existente, valor: valorCentavos / 100, valor_manual: false }
+      : {
+        id: `preview:${participant.id}:${numero}`,
+        participant_id: participant.id,
+        numero,
+        data_vencimento: null,
+        valor: valorCentavos / 100,
+        valor_manual: false,
+        paga: false,
+        data_pagamento: null,
+        created_at: "",
+        updated_at: "",
+      };
+  });
 
   const save = () => {
     const valor = form.valor_pago;
@@ -229,19 +254,24 @@ function ParticipantFinanceModal({
       </div>
 
       <div className="section-label" style={{ marginTop: 8 }}>Parcelas deste participante</div>
+      <div style={{ fontSize: 11, color: "var(--text3)", margin: "-5px 0 10px" }}>
+        {estruturaEmPrevia
+          ? "Prévia atualizada. Salve o financeiro para criar as novas parcelas e liberar a edição individual."
+          : "Edite qualquer parcela. O saldo do contrato será redistribuído automaticamente entre as demais."}
+      </div>
       <div className="table-wrap">
         <table>
           <thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th><th style={{ textAlign: "center" }}>Paga</th></tr></thead>
           <tbody>
-            {parcelas.length === 0 && <tr><td colSpan={4} style={{ textAlign: "center", color: "var(--text3)", padding: 14 }}>As parcelas aparecerão após salvar os dados financeiros.</td></tr>}
-            {parcelas.map((parcela) => (
+            {parcelasExibidas.map((parcela) => (
               <tr key={parcela.id}>
-                <td>{parcela.numero}ª de {parcelas.length}</td>
+                <td>{parcela.numero}ª de {parcelasExibidas.length}</td>
                 <td>
                   <input
                     className="form-input"
                     type="date"
                     value={parcela.data_vencimento ?? ""}
+                    disabled={estruturaEmPrevia}
                     onChange={(event) => updateParcela.mutate({
                       id: parcela.id,
                       patch: { data_vencimento: event.target.value || null },
@@ -249,12 +279,30 @@ function ParticipantFinanceModal({
                     style={{ maxWidth: 180, padding: "6px 8px" }}
                   />
                 </td>
-                <td className="financial-number">{fmtBRL(Number(parcela.valor))}</td>
+                <td style={{ width: 160 }}>
+                  <SmartNumberInput
+                    value={Number(parcela.valor)}
+                    kind="currency"
+                    min={0}
+                    ariaLabel={`Valor da ${parcela.numero}ª parcela`}
+                    disabled={estruturaEmPrevia}
+                    onCommit={(value) => {
+                      if (estruturaEmPrevia) return;
+                      if (value === Number(parcela.valor)) return;
+                      setError(null);
+                      updateParcela.mutate(
+                        { id: parcela.id, patch: { valor: value } },
+                        { onError: (cause) => setError(cause instanceof Error ? cause.message : "Não foi possível redistribuir as parcelas.") },
+                      );
+                    }}
+                  />
+                  {parcela.valor_manual && <span style={{ fontSize: 9, color: "var(--text3)" }}>ajuste manual</span>}
+                </td>
                 <td style={{ textAlign: "center" }}>
                   <input
                     type="checkbox"
                     checked={parcela.paga}
-                    disabled={updateParcela.isPending}
+                    disabled={updateParcela.isPending || estruturaEmPrevia}
                     onChange={(event) => updateParcela.mutate({
                       id: parcela.id,
                       patch: { paga: event.target.checked },
@@ -267,7 +315,7 @@ function ParticipantFinanceModal({
         </table>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, fontSize: 12 }}>
-        <span style={{ color: "var(--text3)" }}>{pagas.length} de {parcelas.length} parcela(s) paga(s)</span>
+        <span style={{ color: "var(--text3)" }}>{pagas.length} de {parcelasExibidas.length} parcela(s) paga(s)</span>
         <strong style={{ color: "var(--teal)" }}>Recebido: {fmtBRL(recebido)}</strong>
       </div>
       {error && <div className="modal-inline-error"><i className="ti ti-alert-circle" /> {error}</div>}

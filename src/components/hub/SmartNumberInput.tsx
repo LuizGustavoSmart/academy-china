@@ -55,6 +55,7 @@ export function SmartNumberInput({
   max,
   className = "form-input",
   ariaLabel,
+  disabled = false,
 }: {
   value: number;
   onValueChange?: (value: number) => void;
@@ -64,6 +65,7 @@ export function SmartNumberInput({
   max?: number;
   className?: string;
   ariaLabel?: string;
+  disabled?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   const [text, setText] = useState(() => formatters[kind].format(value));
@@ -106,6 +108,7 @@ export function SmartNumberInput({
       aria-label={ariaLabel}
       autoComplete="off"
       spellCheck={false}
+      disabled={disabled}
       value={text}
       onFocus={(event) => {
         const input = event.currentTarget;

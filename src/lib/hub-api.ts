@@ -138,6 +138,7 @@ export type ParcelaPagamento = {
   numero: number;
   data_vencimento: string | null;
   valor: number;
+  valor_manual?: boolean;
   paga: boolean;
   data_pagamento: string | null;
   created_at: string;
@@ -668,6 +669,8 @@ export function useUpdateFinanceiroConfig() {
 // ────────── PARCELAS DE PAGAMENTO ──────────
 type LocalParcelaOverride = {
   data_vencimento?: string | null;
+  valor?: number;
+  valor_manual?: boolean;
   paga?: boolean;
   data_pagamento?: string | null;
 };
@@ -688,6 +691,79 @@ function writeLocalParcelas(value: Record<string, LocalParcelaOverride>) {
   window.localStorage.setItem(LOCAL_PARCELAS_KEY, JSON.stringify(value));
 }
 
+function distributeAutomaticParcelas(
+  parcelas: ParcelaPagamento[],
+  totalCentavos: number,
+): ParcelaPagamento[] {
+  let next = parcelas.map((parcela) => ({ ...parcela }));
+  let manualCentavos = next
+    .filter((parcela) => parcela.valor_manual)
+    .reduce((total, parcela) => total + Math.round(Number(parcela.valor || 0) * 100), 0);
+  let automaticas = next.filter((parcela) => !parcela.valor_manual);
+
+  if (
+    manualCentavos > totalCentavos
+    || (automaticas.length === 0 && manualCentavos !== totalCentavos)
+  ) {
+    next = next.map((parcela) => ({ ...parcela, valor_manual: false }));
+    manualCentavos = 0;
+    automaticas = next;
+  }
+
+  if (automaticas.length === 0) return next;
+  const restante = totalCentavos - manualCentavos;
+  const base = Math.floor(restante / automaticas.length);
+  const sobra = restante - base * automaticas.length;
+  const lastAutomaticId = automaticas[automaticas.length - 1].id;
+
+  return next.map((parcela) => {
+    if (parcela.valor_manual) return parcela;
+    const centavos = base + (parcela.id === lastAutomaticId ? sobra : 0);
+    return { ...parcela, valor: centavos / 100 };
+  });
+}
+
+function redistributeEditedParcela(
+  parcelas: ParcelaPagamento[],
+  targetId: string,
+  targetValue: number,
+): ParcelaPagamento[] {
+  if (parcelas.length === 0) {
+    throw new Error("Não foi possível localizar as parcelas deste contrato.");
+  }
+  const totalCentavos = parcelas.reduce(
+    (total, parcela) => total + Math.round(Number(parcela.valor || 0) * 100),
+    0,
+  );
+  let next = parcelas.map((parcela) => parcela.id === targetId
+    ? { ...parcela, valor: targetValue, valor_manual: true }
+    : { ...parcela });
+
+  if (next.length === 1) {
+    if (Math.round(targetValue * 100) !== totalCentavos) {
+      throw new Error("A única parcela deve ter o mesmo valor do contrato.");
+    }
+    return next;
+  }
+
+  if (!next.some((parcela) => !parcela.valor_manual)) {
+    const compensation = [...next]
+      .filter((parcela) => parcela.id !== targetId)
+      .sort((a, b) => b.numero - a.numero)[0];
+    next = next.map((parcela) => parcela.id === compensation.id
+      ? { ...parcela, valor_manual: false }
+      : parcela);
+  }
+
+  const manualCentavos = next
+    .filter((parcela) => parcela.valor_manual)
+    .reduce((total, parcela) => total + Math.round(Number(parcela.valor || 0) * 100), 0);
+  if (manualCentavos > totalCentavos) {
+    throw new Error("A soma das parcelas manuais ultrapassa o valor do contrato.");
+  }
+  return distributeAutomaticParcelas(next, totalCentavos);
+}
+
 function buildLocalParcelas(participants: Participant[]): ParcelaPagamento[] {
   const overrides = readLocalParcelas();
   const now = new Date().toISOString();
@@ -697,7 +773,7 @@ function buildLocalParcelas(participants: Participant[]): ParcelaPagamento[] {
     const totalCentavos = Math.round(Number(participant.valor_pago || 0) * 100);
     const baseCentavos = Math.floor(totalCentavos / quantidade);
 
-    return Array.from({ length: quantidade }, (_, index) => {
+    const rows = Array.from({ length: quantidade }, (_, index) => {
       const numero = index + 1;
       const id = `local:${participant.id}:${numero}`;
       const override = overrides[id] ?? {};
@@ -711,7 +787,8 @@ function buildLocalParcelas(participants: Participant[]): ParcelaPagamento[] {
         participant_id: participant.id,
         numero,
         data_vencimento: override.data_vencimento ?? null,
-        valor: valorCentavos / 100,
+        valor: override.valor ?? valorCentavos / 100,
+        valor_manual: override.valor_manual ?? false,
         paga,
         data_pagamento: override.data_pagamento ?? (paga ? now : null),
         created_at: now,
@@ -719,6 +796,7 @@ function buildLocalParcelas(participants: Participant[]): ParcelaPagamento[] {
         local: true,
       };
     });
+    return distributeAutomaticParcelas(rows, totalCentavos);
   });
 }
 
@@ -753,25 +831,75 @@ export function useParcelasPagamento(participantId?: string) {
 
 export function useUpdateParcelaPagamento() {
   const qc = useQueryClient();
+  const cachedParticipantParcelas = (id: string) => {
+    const matches = qc
+      .getQueriesData<ParcelaPagamento[]>({ queryKey: ["hub_parcelas_pagamento"] })
+      .map(([, data]) => data ?? [])
+      .find((data) => data.some((parcela) => parcela.id === id)) ?? [];
+    const target = matches.find((parcela) => parcela.id === id);
+    return target
+      ? matches.filter((parcela) => parcela.participant_id === target.participant_id)
+      : [];
+  };
+
   return useMutation({
     mutationFn: async ({
       id,
       patch,
     }: {
       id: string;
-      patch: Pick<Partial<ParcelaPagamento>, "data_vencimento" | "paga">;
+      patch: Pick<Partial<ParcelaPagamento>, "data_vencimento" | "valor" | "paga">;
     }) => {
       if (id.startsWith("local:")) {
         const overrides = readLocalParcelas();
-        const current = overrides[id] ?? {};
-        overrides[id] = {
-          ...current,
-          ...patch,
-          ...(patch.paga !== undefined
-            ? { data_pagamento: patch.paga ? new Date().toISOString() : null }
-            : {}),
-        };
+        if (patch.valor !== undefined) {
+          const next = redistributeEditedParcela(
+            cachedParticipantParcelas(id),
+            id,
+            patch.valor,
+          );
+          for (const parcela of next) {
+            overrides[parcela.id] = {
+              ...overrides[parcela.id],
+              valor: parcela.valor,
+              valor_manual: parcela.valor_manual,
+            };
+          }
+        } else {
+          const current = overrides[id] ?? {};
+          overrides[id] = {
+            ...current,
+            ...patch,
+            ...(patch.paga !== undefined
+              ? { data_pagamento: patch.paga ? new Date().toISOString() : null }
+              : {}),
+          };
+        }
         writeLocalParcelas(overrides);
+        return;
+      }
+      if (patch.valor !== undefined) {
+        const rpc = await sb.rpc("update_parcela_valor", {
+          p_parcela_id: id,
+          p_valor: patch.valor,
+        });
+        if (!rpc.error) return;
+
+        // Compatibilidade temporária enquanto a nova migration ainda não foi
+        // aplicada: redistribui no cliente e persiste somente os valores.
+        const next = redistributeEditedParcela(
+          cachedParticipantParcelas(id),
+          id,
+          patch.valor,
+        );
+        const updates = await Promise.all(next.map((parcela) =>
+          sb
+            .from("parcelas_pagamento")
+            .update({ valor: parcela.valor, updated_at: new Date().toISOString() })
+            .eq("id", parcela.id),
+        ));
+        const failed = updates.find((result) => result.error);
+        if (failed?.error) throw failed.error;
         return;
       }
       const payload: Record<string, unknown> = {

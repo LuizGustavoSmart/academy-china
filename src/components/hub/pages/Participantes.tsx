@@ -730,7 +730,20 @@ function ParcelasPagamentoPanel({
                         style={{ maxWidth: 180, padding: "6px 8px" }}
                       />
                     </td>
-                    <td style={{ fontWeight: 500 }}>{fmtBRL(Number(parcela.valor))}</td>
+                    <td style={{ width: 160 }}>
+                      <SmartNumberInput
+                        value={Number(parcela.valor)}
+                        kind="currency"
+                        min={0}
+                        ariaLabel={`Valor da ${parcela.numero}ª parcela`}
+                        onCommit={(value) => {
+                          if (value !== Number(parcela.valor)) {
+                            update.mutate({ id: parcela.id, patch: { valor: value } });
+                          }
+                        }}
+                      />
+                      {parcela.valor_manual && <span style={{ fontSize: 9, color: "var(--text3)" }}>ajuste manual</span>}
+                    </td>
                     <td style={{ textAlign: "center" }}>
                       <input
                         type="checkbox"
