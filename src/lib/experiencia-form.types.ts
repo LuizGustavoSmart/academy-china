@@ -1,5 +1,7 @@
-// Tipos e metadados do Formulário de Experiência do Participante (10 seções).
-// As 10 colunas jsonb abaixo espelham exatamente `public.participant_responses`.
+// Tipos e metadados do Formulário de Experiência do Participante (9 seções).
+// As colunas jsonb abaixo espelham `public.participant_responses` — a coluna
+// `contato_emergencia` continua existindo na tabela mas não é mais usada pelo
+// formulário (dado já coletado em china.matteracademy.ai/formulario).
 
 export type SectionKey =
   | "identificacao"
@@ -10,21 +12,14 @@ export type SectionKey =
   | "preparacao_viagem"
   | "networking"
   | "indicacoes"
-  | "ultima_pergunta"
-  | "contato_emergencia";
+  | "ultima_pergunta";
 
 export type SecaoStatus = "nao_iniciada" | "em_andamento" | "concluida";
 export type SecoesConcluidas = Partial<Record<SectionKey, SecaoStatus>>;
 
 export type ExperienciaIdentificacao = {
-  nome_completo?: string;
   nome_preferido?: string;
-  empresa?: string;
-  cargo?: string;
   cidade_estado?: string;
-  data_nascimento?: string;
-  telefone?: string;
-  email?: string;
   idiomas?: string;
 };
 
@@ -54,7 +49,6 @@ export type ExperienciaPreferencias = {
 
 export type ExperienciaGastronomia = {
   restricao_alimentar?: string;
-  alergia_alimentar?: string;
   alimento_evita?: string;
   alimento_religioso_cultural?: string;
   comidas_interesse?: string;
@@ -64,12 +58,8 @@ export type ExperienciaGastronomia = {
 export type ExperienciaPreparacaoViagem = {
   cotacao_seguro?: string;
   contratou_seguro?: string;
-  cotacao_passagem?: string;
-  passagem_emitida?: string;
-  passaporte_validade?: string;
   itinerario_retorno?: string;
   companhia_viagem?: string;
-  tamanho_camisa?: string;
   preocupacao_reconhecimento_facial?: string;
   autorizacao_uso_imagem?: string;
 };
@@ -95,13 +85,6 @@ export type ExperienciaUltimaPergunta = {
   resposta?: string;
 };
 
-export type ExperienciaContatoEmergencia = {
-  nome?: string;
-  parentesco?: string;
-  telefone?: string;
-  email?: string;
-};
-
 export type SectionDataMap = {
   identificacao: ExperienciaIdentificacao;
   historia_objetivos: ExperienciaHistoriaObjetivos;
@@ -112,7 +95,6 @@ export type SectionDataMap = {
   networking: ExperienciaNetworking;
   indicacoes: ExperienciaIndicacoes;
   ultima_pergunta: ExperienciaUltimaPergunta;
-  contato_emergencia: ExperienciaContatoEmergencia;
 };
 
 export type ParticipantResponse = {
@@ -130,13 +112,14 @@ export type SectionMeta = {
   titulo: string;
   subtitulo: string;
   /** Campos obrigatórios para a seção virar "concluída" automaticamente.
-   * Seções sem obrigatórios (2–9) usam a regra "todos os campos preenchidos
-   * OU marcada manualmente" — ver useSectionCompletion. */
+   * Nenhuma seção tem obrigatórios hoje (os dados obrigatórios de identificação
+   * e contato de emergência já vêm de china.matteracademy.ai/formulario) —
+   * todas usam a regra "todos os campos preenchidos OU marcada manualmente". */
   camposObrigatorios: string[];
 };
 
 export const SECTIONS: SectionMeta[] = [
-  { key: "identificacao", numero: 1, titulo: "Identificação", subtitulo: "Sobre você.", camposObrigatorios: ["nome_completo", "empresa", "cargo", "telefone", "email"] },
+  { key: "identificacao", numero: 1, titulo: "Identificação", subtitulo: "Sobre você.", camposObrigatorios: [] },
   { key: "historia_objetivos", numero: 2, titulo: "Sua história e seus objetivos", subtitulo: "O que traz você até aqui.", camposObrigatorios: [] },
   { key: "cuidados", numero: 3, titulo: "Como podemos cuidar melhor de você?", subtitulo: "Cuidado começa em ouvir.", camposObrigatorios: [] },
   { key: "preferencias", numero: 4, titulo: "Suas preferências pessoais", subtitulo: "O jeito de cada um viajar.", camposObrigatorios: [] },
@@ -145,7 +128,6 @@ export const SECTIONS: SectionMeta[] = [
   { key: "networking", numero: 7, titulo: "Conexões e networking", subtitulo: "Quem você quer encontrar por lá.", camposObrigatorios: [] },
   { key: "indicacoes", numero: 8, titulo: "Quem mais deveria estar nessa experiência?", subtitulo: "Indique quem também merece viver isso.", camposObrigatorios: [] },
   { key: "ultima_pergunta", numero: 9, titulo: "Uma última pergunta", subtitulo: "\"Valeu a pena porque...\"", camposObrigatorios: [] },
-  { key: "contato_emergencia", numero: 10, titulo: "Contato de emergência", subtitulo: "Um contato de segurança, sempre.", camposObrigatorios: ["nome", "parentesco", "telefone"] },
 ];
 
 export const emptyParticipantResponseDefaults: SectionDataMap = {
@@ -158,5 +140,4 @@ export const emptyParticipantResponseDefaults: SectionDataMap = {
   networking: {},
   indicacoes: [],
   ultima_pergunta: {},
-  contato_emergencia: {},
 };

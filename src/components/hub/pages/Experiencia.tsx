@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useParticipants, useParticipantResponse, useUpsertParticipantResponseSection } from "@/lib/hub-api";
 import { SECTIONS, emptyParticipantResponseDefaults, type SectionKey, type SecaoStatus, type SecoesConcluidas } from "@/lib/experiencia-form.types";
-import { ShortTextField, LongTextField, DateField } from "@/components/hub/experiencia/fields";
+import { ShortTextField, LongTextField } from "@/components/hub/experiencia/fields";
 
 const REQUIRED_SECTIONS: SectionKey[] = SECTIONS.filter((s) => s.camposObrigatorios.length > 0).map((s) => s.key);
-const PASSAPORTE_VALIDADE_MIN = "2026-11-09";
 
 function isEmptyValue(v: unknown): boolean {
   if (v == null) return true;
@@ -96,15 +95,9 @@ function SectionFields({ section, draft, setDraft }: { section: SectionKey; draf
     case "identificacao":
       return (
         <>
-          <ShortTextField numero="01" label="Nome completo" required value={draft.nome_completo ?? ""} onChange={set("nome_completo")} />
-          <ShortTextField numero="02" label="Nome pelo qual prefere ser chamado(a)" value={draft.nome_preferido ?? ""} onChange={set("nome_preferido")} />
-          <ShortTextField numero="03" label="Empresa" required value={draft.empresa ?? ""} onChange={set("empresa")} />
-          <ShortTextField numero="04" label="Cargo" required value={draft.cargo ?? ""} onChange={set("cargo")} />
-          <ShortTextField numero="05" label="Cidade / Estado" value={draft.cidade_estado ?? ""} onChange={set("cidade_estado")} />
-          <DateField numero="06" label="Data de nascimento" value={draft.data_nascimento ?? ""} onChange={set("data_nascimento")} />
-          <ShortTextField numero="07" label="Telefone" required type="tel" value={draft.telefone ?? ""} onChange={set("telefone")} />
-          <ShortTextField numero="08" label="E-mail" required type="email" value={draft.email ?? ""} onChange={set("email")} />
-          <ShortTextField numero="09" label="Em quais idiomas, além do português, você se comunica com fluência?" value={draft.idiomas ?? ""} onChange={set("idiomas")} />
+          <ShortTextField numero="01" label="Nome pelo qual prefere ser chamado(a)" value={draft.nome_preferido ?? ""} onChange={set("nome_preferido")} />
+          <ShortTextField numero="02" label="Cidade / Estado" value={draft.cidade_estado ?? ""} onChange={set("cidade_estado")} />
+          <ShortTextField numero="03" label="Em quais idiomas, além do português, você se comunica com fluência?" value={draft.idiomas ?? ""} onChange={set("idiomas")} />
           <div className="exp-field-note">Todos os campos serão tratados com confidencialidade.</div>
         </>
       );
@@ -157,34 +150,23 @@ function SectionFields({ section, draft, setDraft }: { section: SectionKey; draf
       return (
         <>
           <ShortTextField numero="01" label="Você possui alguma restrição alimentar? Se sim, qual?" value={draft.restricao_alimentar ?? ""} onChange={set("restricao_alimentar")} />
-          <ShortTextField numero="02" label="Possui alguma alergia alimentar? Se sim, qual?" value={draft.alergia_alimentar ?? ""} onChange={set("alergia_alimentar")} />
-          <ShortTextField numero="03" label="Existe algum alimento que você evita consumir?" value={draft.alimento_evita ?? ""} onChange={set("alimento_evita")} />
-          <LongTextField numero="04" label="Existe algum alimento que consome por motivos religiosos, culturais ou pessoais e que devemos respeitar?" value={draft.alimento_religioso_cultural ?? ""} onChange={set("alimento_religioso_cultural")} />
-          <LongTextField numero="—" label="Quais comidas típicas chinesas você teria interesse em experimentar?" value={draft.comidas_interesse ?? ""} onChange={set("comidas_interesse")} />
-          <LongTextField numero="—" label="Existe alguma experiência gastronômica específica que gostaria de viver na China?" value={draft.experiencia_gastronomica_especifica ?? ""} onChange={set("experiencia_gastronomica_especifica")} />
+          <ShortTextField numero="02" label="Existe algum alimento que você evita consumir?" value={draft.alimento_evita ?? ""} onChange={set("alimento_evita")} />
+          <LongTextField numero="03" label="Existe algum alimento que consome por motivos religiosos, culturais ou pessoais e que devemos respeitar?" value={draft.alimento_religioso_cultural ?? ""} onChange={set("alimento_religioso_cultural")} />
+          <LongTextField numero="04" label="Quais comidas típicas chinesas você teria interesse em experimentar?" value={draft.comidas_interesse ?? ""} onChange={set("comidas_interesse")} />
+          <LongTextField numero="05" label="Existe alguma experiência gastronômica específica que gostaria de viver na China?" value={draft.experiencia_gastronomica_especifica ?? ""} onChange={set("experiencia_gastronomica_especifica")} />
         </>
       );
 
-    case "preparacao_viagem": {
-      const validade = draft.passaporte_validade ?? "";
-      const alert = validade && validade < PASSAPORTE_VALIDADE_MIN
-        ? "Verifique a validade — recomendado mínimo até 09/11/2026 (6 meses após o retorno)."
-        : undefined;
+    case "preparacao_viagem":
       return (
         <>
-          <div className="section-label">Seguro e passagem</div>
+          <div className="section-label">Seguro</div>
           <ShortTextField numero="" label="Já realizou a cotação do seguro viagem?" value={draft.cotacao_seguro ?? ""} onChange={set("cotacao_seguro")} />
           <ShortTextField numero="" label="Já contratou o seguro viagem?" value={draft.contratou_seguro ?? ""} onChange={set("contratou_seguro")} />
-          <ShortTextField numero="" label="Já realizou a cotação da passagem aérea?" value={draft.cotacao_passagem ?? ""} onChange={set("cotacao_passagem")} />
-          <ShortTextField numero="" label="Sua passagem aérea já foi emitida?" value={draft.passagem_emitida ?? ""} onChange={set("passagem_emitida")} />
-
-          <div className="section-label">Documentação</div>
-          <DateField numero="" label="Qual a data de validade do seu passaporte?" value={validade} onChange={set("passaporte_validade")} min={PASSAPORTE_VALIDADE_MIN} alert={alert} />
-          <ShortTextField numero="" label="Já possui itinerário definido para o trecho de retorno (via Dubai)?" value={draft.itinerario_retorno ?? ""} onChange={set("itinerario_retorno")} />
 
           <div className="section-label">Logística pessoal</div>
+          <ShortTextField numero="" label="Já possui itinerário definido para o trecho de retorno (via Dubai)?" value={draft.itinerario_retorno ?? ""} onChange={set("itinerario_retorno")} />
           <ShortTextField numero="" label="Você viajará sozinho(a) ou com acompanhante?" value={draft.companhia_viagem ?? ""} onChange={set("companhia_viagem")} />
-          <ShortTextField numero="" label="Camisa tamanho" value={draft.tamanho_camisa ?? ""} onChange={set("tamanho_camisa")} />
 
           <div className="section-label">Imagem, tecnologia e conteúdo</div>
           <LongTextField
@@ -205,7 +187,6 @@ function SectionFields({ section, draft, setDraft }: { section: SectionKey; draf
           </div>
         </>
       );
-    }
 
     case "networking":
       return (
@@ -263,22 +244,14 @@ function SectionFields({ section, draft, setDraft }: { section: SectionKey; draf
 
     case "ultima_pergunta":
       return (
-        <LongTextField
-          numero=""
-          label='Ao final da Imersão China 2026, gostaríamos que você olhasse para trás e pensasse: "Valeu a pena porque..." Como você completaria essa frase hoje?'
-          prefix='Valeu a pena porque...'
-          value={draft.resposta ?? ""}
-          onChange={set("resposta")}
-        />
-      );
-
-    case "contato_emergencia":
-      return (
         <>
-          <ShortTextField numero="01" label="Nome" required value={draft.nome ?? ""} onChange={set("nome")} />
-          <ShortTextField numero="02" label="Parentesco" required value={draft.parentesco ?? ""} onChange={set("parentesco")} />
-          <ShortTextField numero="03" label="Telefone" required type="tel" value={draft.telefone ?? ""} onChange={set("telefone")} />
-          <ShortTextField numero="04" label="E-mail" type="email" value={draft.email ?? ""} onChange={set("email")} />
+          <LongTextField
+            numero=""
+            label='Ao final da Imersão China 2026, gostaríamos que você olhasse para trás e pensasse: "Valeu a pena porque..." Como você completaria essa frase hoje?'
+            prefix='Valeu a pena porque...'
+            value={draft.resposta ?? ""}
+            onChange={set("resposta")}
+          />
           <div className="exp-field-note">
             Muito obrigado por compartilhar um pouco da sua história conosco. Nossa missão é cuidar dos detalhes para que você possa se concentrar no que realmente importa: aprender, se conectar, se inspirar e voltar ao Brasil transformado pela experiência.
           </div>

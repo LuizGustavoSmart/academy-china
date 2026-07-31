@@ -49,18 +49,3 @@ export function LongTextField({ numero, label, required, value, onChange, placeh
   );
 }
 
-export function DateField({ numero, label, required, value, onChange, min, alert }: {
-  numero: string; label: string; required?: boolean; value: string; onChange: (v: string) => void; min?: string; alert?: string;
-}) {
-  return (
-    <FieldWrap numero={numero} label={label} required={required}>
-      <input className="form-input" type="date" value={value} min={min} onChange={(e) => onChange(e.target.value)} style={{ maxWidth: 220 }} />
-      {alert && (
-        <div className="exp-alert">
-          <i className="ti ti-alert-triangle" /> {alert}
-        </div>
-      )}
-    </FieldWrap>
-  );
-}
-
