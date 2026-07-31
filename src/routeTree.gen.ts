@@ -58,16 +58,10 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
-    | '/admin/'
-    | '/api/public/leads'
-    | '/api/public/hooks/sync-china-sheet'
+    '/' | '/admin/' | '/api/public/leads' | '/api/public/hooks/sync-china-sheet'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
-    | '/admin'
-    | '/api/public/leads'
-    | '/api/public/hooks/sync-china-sheet'
+    '/' | '/admin' | '/api/public/leads' | '/api/public/hooks/sync-china-sheet'
   id:
     | '__root__'
     | '/'

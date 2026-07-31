@@ -1,5 +1,6 @@
 import { hubSupabase } from "@/integrations/supabase/hub-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ParticipantResponse, SecoesConcluidas, SectionDataMap, SectionKey } from "@/lib/experiencia-form.types";
 
 // ────────── TYPES ──────────
 export type Participant = {
@@ -263,6 +264,52 @@ export function useDeleteParticipant() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_participants"] }),
+  });
+}
+
+// ────────── FORMULÁRIO DE EXPERIÊNCIA (participant_responses) ──────────
+export function useParticipantResponse(participantId: string | null) {
+  return useQuery<ParticipantResponse | null>({
+    queryKey: ["hub_participant_response", participantId],
+    enabled: !!participantId,
+    queryFn: async () => {
+      if (!participantId) return null;
+      const { data, error } = await sb
+        .from("participant_responses")
+        .select("*")
+        .eq("participant_id", participantId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useUpsertParticipantResponseSection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async <K extends SectionKey>({
+      participantId,
+      section,
+      data,
+      secoesConcluidas,
+      status,
+    }: {
+      participantId: string;
+      section: K;
+      data: SectionDataMap[K];
+      secoesConcluidas: SecoesConcluidas;
+      status: ParticipantResponse["status"];
+    }) => {
+      const { error } = await sb
+        .from("participant_responses")
+        .upsert(
+          { participant_id: participantId, [section]: data, secoes_concluidas: secoesConcluidas, status },
+          { onConflict: "participant_id" },
+        );
+      if (error) throw error;
+    },
+    onSuccess: (_d: any, v: any) => qc.invalidateQueries({ queryKey: ["hub_participant_response", v.participantId] }),
   });
 }
 

@@ -15,6 +15,7 @@ import { ConfirmDialog, Modal } from "@/components/hub/Modal";
 import { EditableField } from "@/components/hub/Editable";
 import { SmartNumberInput } from "@/components/hub/SmartNumberInput";
 import { ParticipantTimeline } from "@/components/hub/ParticipantTimeline";
+import { ParticipantResponsesPanel } from "@/components/hub/experiencia/ParticipantResponsesPanel";
 
 const STATUS_BADGE: Record<string, string> = {
   confirmado: "badge-ok",
@@ -657,6 +658,7 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
           />
         </div>
       </div>
+      <ParticipantResponsesPanel participantId={p.id} />
       <div className="panel" style={{ marginBottom: 20 }}>
         <div className="panel-header"><i className="ti ti-timeline" /> Histórico & observações</div>
         <div className="panel-body">

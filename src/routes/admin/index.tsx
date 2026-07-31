@@ -10,6 +10,7 @@ import { PendenciasList } from "@/components/hub/PendenciasList";
 import { AliancasPage } from "@/components/hub/pages/Aliancas";
 import { SincronizacaoPage } from "@/components/hub/pages/Sincronizacao";
 import { ConfiguracoesPage } from "@/components/hub/pages/Configuracoes";
+import { ExperienciaPage } from "@/components/hub/pages/Experiencia";
 import { usePendencias } from "@/lib/hub-api";
 import menuLogo from "@/assets/china2026-academy-logo.png.asset.json";
 
@@ -106,7 +107,7 @@ export const Route = createFileRoute("/admin/")({
   component: Index,
 });
 
-type Tab = "dashboard" | "participantes" | "financeiro" | "comercial" | "preop" | "operacional" | "pendencias" | "aliancas" | "sincronizacao" | "config";
+type Tab = "dashboard" | "participantes" | "financeiro" | "comercial" | "preop" | "operacional" | "pendencias" | "aliancas" | "experiencia" | "sincronizacao" | "config";
 
 const PAGE_META: Record<Tab, { title: string; sub: string }> = {
   dashboard: { title: "Dashboard", sub: "Visão geral da operação" },
@@ -117,6 +118,7 @@ const PAGE_META: Record<Tab, { title: string; sub: string }> = {
   operacional: { title: "Viagem", sub: "Etapas · Fase operacional" },
   pendencias: { title: "Pendências", sub: "Backlog unificado" },
   aliancas: { title: "Alianças estratégicas", sub: "Parceiros institucionais da Academy" },
+  experiencia: { title: "Formulário de Experiência", sub: "Curadoria individual de cada participante" },
   sincronizacao: { title: "Sincronização", sub: "Exportar CRM para Google Sheets" },
   config: { title: "Configurações", sub: "Responsáveis e ajustes gerais" },
 };
@@ -210,6 +212,12 @@ function Index() {
               onClick={() => switchTab("aliancas")}
             />
             <NavItem
+              active={tab === "experiencia"}
+              icon="ti-clipboard-text"
+              label="Formulário de Experiência"
+              onClick={() => switchTab("experiencia")}
+            />
+            <NavItem
               active={tab === "sincronizacao"}
               icon="ti-refresh"
               label="Sincronização"
@@ -265,6 +273,7 @@ function Index() {
             {tab === "operacional" && <ViagemPage sub={sub} />}
             {tab === "pendencias" && <PendenciasList title="Backlog unificado — todas as fases" />}
             {tab === "aliancas" && <AliancasPage sub={sub} />}
+            {tab === "experiencia" && <ExperienciaPage />}
             {tab === "sincronizacao" && <SincronizacaoPage />}
             {tab === "config" && <ConfiguracoesPage />}
           </div>
