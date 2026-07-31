@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      custos: {
+        Row: {
+          categoria: string
+          created_at: string
+          data_vencimento: string | null
+          descricao: string | null
+          id: string
+          ordem: number
+          tipo: string
+          titulo: string
+          updated_at: string
+          valor_fixo: number
+          valor_variavel: number
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          data_vencimento?: string | null
+          descricao?: string | null
+          id?: string
+          ordem?: number
+          tipo?: string
+          titulo: string
+          updated_at?: string
+          valor_fixo?: number
+          valor_variavel?: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          data_vencimento?: string | null
+          descricao?: string | null
+          id?: string
+          ordem?: number
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+          valor_fixo?: number
+          valor_variavel?: number
+        }
+        Relationships: []
+      }
       financeiro_config: {
         Row: {
           cambio: number
@@ -83,6 +125,74 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_activities: {
+        Row: {
+          autor: string | null
+          conteudo: string
+          created_at: string
+          id: string
+          lead_id: string
+          tipo: string
+        }
+        Insert: {
+          autor?: string | null
+          conteudo: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          tipo?: string
+        }
+        Update: {
+          autor?: string | null
+          conteudo?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads_crm"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_responsaveis: {
+        Row: {
+          created_at: string
+          lead_id: string
+          responsavel_id: string
+        }
+        Insert: {
+          created_at?: string
+          lead_id: string
+          responsavel_id: string
+        }
+        Update: {
+          created_at?: string
+          lead_id?: string
+          responsavel_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_responsaveis_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads_crm"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_responsaveis_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "responsaveis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           created_at: string
@@ -124,6 +234,7 @@ export type Database = {
       }
       leads_crm: {
         Row: {
+          cadastrado_por: string | null
           cargo: string | null
           cidade: string | null
           created_at: string
@@ -144,6 +255,7 @@ export type Database = {
           user_agent: string | null
         }
         Insert: {
+          cadastrado_por?: string | null
           cargo?: string | null
           cidade?: string | null
           created_at?: string
@@ -164,6 +276,7 @@ export type Database = {
           user_agent?: string | null
         }
         Update: {
+          cadastrado_por?: string | null
           cargo?: string | null
           cidade?: string | null
           created_at?: string
@@ -227,9 +340,89 @@ export type Database = {
         }
         Relationships: []
       }
+      parcelas_pagamento: {
+        Row: {
+          created_at: string
+          data_pagamento: string | null
+          data_vencimento: string | null
+          id: string
+          numero: number
+          paga: boolean
+          participant_id: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          id?: string
+          numero: number
+          paga?: boolean
+          participant_id: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          id?: string
+          numero?: number
+          paga?: boolean
+          participant_id?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parcelas_pagamento_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      participant_activities: {
+        Row: {
+          autor: string | null
+          conteudo: string
+          created_at: string
+          id: string
+          participant_id: string
+          tipo: string
+        }
+        Insert: {
+          autor?: string | null
+          conteudo: string
+          created_at?: string
+          id?: string
+          participant_id: string
+          tipo?: string
+        }
+        Update: {
+          autor?: string | null
+          conteudo?: string
+          created_at?: string
+          id?: string
+          participant_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participant_activities_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       participants: {
         Row: {
           alergias: string | null
+          areas_interesse: string | null
           cargo: string | null
           cidade: string | null
           contato_emergencia: string | null
@@ -238,29 +431,44 @@ export type Database = {
           data_nascimento: string | null
           email: string | null
           empresa: string | null
+          empresa_perfil: string | null
+          empresa_site: string | null
+          form_id: string | null
+          form_synced_at: string | null
+          foto_url: string | null
           id: string
           medicamentos: string | null
+          nacionalidade: string | null
           nome: string
           nome_completo: string | null
           observacoes: string | null
           observacoes_medicas: string | null
           origem: string | null
           pagamento_status: string
+          parcelas: number
           passaporte: string | null
+          passaporte_emissao: string | null
+          passaporte_validade: string | null
           quarto: string | null
           restricoes_alimentares: string | null
           seguro_status: string
           status: string
+          tamanho_blazer: string | null
+          tamanho_camisa: string | null
           telefone: string | null
           tier: string
+          tipo_sanguineo: string | null
           updated_at: string
           uso_imagem_status: string
           valor_pago: number
+          voo_detalhes: Json | null
           voo_ida_status: string
+          voo_volta_detalhes: Json | null
           voo_volta_status: string
         }
         Insert: {
           alergias?: string | null
+          areas_interesse?: string | null
           cargo?: string | null
           cidade?: string | null
           contato_emergencia?: string | null
@@ -269,29 +477,44 @@ export type Database = {
           data_nascimento?: string | null
           email?: string | null
           empresa?: string | null
+          empresa_perfil?: string | null
+          empresa_site?: string | null
+          form_id?: string | null
+          form_synced_at?: string | null
+          foto_url?: string | null
           id?: string
           medicamentos?: string | null
+          nacionalidade?: string | null
           nome: string
           nome_completo?: string | null
           observacoes?: string | null
           observacoes_medicas?: string | null
           origem?: string | null
           pagamento_status?: string
+          parcelas?: number
           passaporte?: string | null
+          passaporte_emissao?: string | null
+          passaporte_validade?: string | null
           quarto?: string | null
           restricoes_alimentares?: string | null
           seguro_status?: string
           status?: string
+          tamanho_blazer?: string | null
+          tamanho_camisa?: string | null
           telefone?: string | null
           tier?: string
+          tipo_sanguineo?: string | null
           updated_at?: string
           uso_imagem_status?: string
           valor_pago?: number
+          voo_detalhes?: Json | null
           voo_ida_status?: string
+          voo_volta_detalhes?: Json | null
           voo_volta_status?: string
         }
         Update: {
           alergias?: string | null
+          areas_interesse?: string | null
           cargo?: string | null
           cidade?: string | null
           contato_emergencia?: string | null
@@ -300,25 +523,39 @@ export type Database = {
           data_nascimento?: string | null
           email?: string | null
           empresa?: string | null
+          empresa_perfil?: string | null
+          empresa_site?: string | null
+          form_id?: string | null
+          form_synced_at?: string | null
+          foto_url?: string | null
           id?: string
           medicamentos?: string | null
+          nacionalidade?: string | null
           nome?: string
           nome_completo?: string | null
           observacoes?: string | null
           observacoes_medicas?: string | null
           origem?: string | null
           pagamento_status?: string
+          parcelas?: number
           passaporte?: string | null
+          passaporte_emissao?: string | null
+          passaporte_validade?: string | null
           quarto?: string | null
           restricoes_alimentares?: string | null
           seguro_status?: string
           status?: string
+          tamanho_blazer?: string | null
+          tamanho_camisa?: string | null
           telefone?: string | null
           tier?: string
+          tipo_sanguineo?: string | null
           updated_at?: string
           uso_imagem_status?: string
           valor_pago?: number
+          voo_detalhes?: Json | null
           voo_ida_status?: string
+          voo_volta_detalhes?: Json | null
           voo_volta_status?: string
         }
         Relationships: []
@@ -371,6 +608,33 @@ export type Database = {
         }
         Relationships: []
       }
+      responsaveis: {
+        Row: {
+          ativo: boolean
+          cor: string | null
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cor?: string | null
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cor?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       touchpoints: {
         Row: {
           created_at: string
@@ -411,7 +675,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      replace_lead_responsaveis: {
+        Args: { p_lead_id: string; p_responsavel_ids: string[] }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

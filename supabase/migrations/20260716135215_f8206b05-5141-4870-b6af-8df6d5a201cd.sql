@@ -1,0 +1,1 @@
+ALTER TABLE public.leads_crm ADD COLUMN IF NOT EXISTS cadastrado_por text;

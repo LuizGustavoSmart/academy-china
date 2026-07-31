@@ -1,4 +1,4 @@
-import { useCustos, useFinanceiroConfig, useLeads, useParticipants, usePendencias, custoValor, categoriaLabel, fmtBRL } from "@/lib/hub-api";
+import { useCustos, useFinanceiroConfig, useLeads, useParcelasPagamento, useParticipants, usePendencias, custoValor, categoriaLabel, fmtBRL, isDeclined, pipelineStage, NEGOTIATION_STAGES, STAGE_CONFIRMADO, STAGE_CONTRATO, STAGE_NEGOCIACAO } from "@/lib/hub-api";
 
 export function DashboardPage() {
   const { data: participants = [] } = useParticipants();
@@ -6,18 +6,31 @@ export function DashboardPage() {
   const { data: pendencias = [] } = usePendencias();
   const { data: fin } = useFinanceiroConfig();
   const { data: custos = [] } = useCustos();
+  const { data: parcelas = [] } = useParcelasPagamento();
 
-  const confirmed = participants.filter((p) => p.pagamento_status === "confirmado");
-  const pagamentosRecebidos = confirmed.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
-  const minVagas = fin?.min_vagas ?? 20;
-  const tierStandard = Number(fin?.tier_standard ?? 93600);
-  const breakEvenTotal = minVagas * tierStandard;
-  const falta = Math.max(0, breakEvenTotal - pagamentosRecebidos);
+  const signedParticipants = participants.filter((p) => p.contrato_status === "assinado");
+  const signedIds = new Set(signedParticipants.map((participant) => participant.id));
+  const paidInstallments = parcelas.filter((parcela) => parcela.paga && signedIds.has(parcela.participant_id));
+  const confirmedPipelineLeads = leads.filter((lead) =>
+    !isDeclined(lead)
+    && [STAGE_CONFIRMADO, STAGE_CONTRATO].includes(pipelineStage(lead.passo)),
+  );
+  // O Pipeline também exibe em P7 participantes que ainda não possuem um lead
+  // correspondente. Mantemos a mesma regra aqui para os totais nunca divergirem.
+  const leadNames = new Set(leads.map((lead) => lead.nome.toLowerCase().trim()));
+  const orphanParticipants = participants.filter((participant) =>
+    !leadNames.has(participant.nome.toLowerCase().trim()),
+  );
+  const confirmedTotal = confirmedPipelineLeads.length + orphanParticipants.length;
+  const pagamentosRecebidos = paidInstallments.reduce((s, parcela) => s + Number(parcela.valor || 0), 0);
+  const minimoViavel = 1_800_000;
+  const falta = Math.max(0, minimoViavel - pagamentosRecebidos);
 
-  const leadNames = new Set(leads.map((l) => l.nome.toLowerCase().trim()));
-  const orphanParticipants = participants.filter((p) => !leadNames.has(p.nome.toLowerCase().trim()));
-  const totalFunil = leads.length + orphanParticipants.length;
-  const leadsAtivos = leads.filter((l) => l.passo >= 2 && l.passo <= 5).length;
+  const activeLeads = leads.filter((lead) =>
+    !isDeclined(lead) && !confirmedPipelineLeads.some((confirmed) => confirmed.id === lead.id),
+  );
+  const totalFunil = activeLeads.length;
+  const leadsAtivos = activeLeads.filter((l) => NEGOTIATION_STAGES.includes(l.passo)).length;
   const pendCriticas = pendencias.filter((p) => p.status !== "resolvida" && p.prioridade === "critico").length;
 
   const proximosVencimentos = custos
@@ -28,11 +41,22 @@ export function DashboardPage() {
   return (
     <div className="main">
       <div className="metrics" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
-        <MetricCard icon="ti-users" label="Leads no funil" value={String(totalFunil)} sub={`${leadsAtivos} em negociação ativa`} />
-        <MetricCard icon="ti-check" label="Vagas confirmadas" value={String(confirmed.length)} sub={`meta: ${fin?.min_vagas ?? 20}–${fin?.meta_vagas ?? 25} participantes`} valueClass="metric-ok" />
-        <MetricCard icon="ti-calendar" label="Duração da missão" value="9 dias" sub="Pequim · Xangai · Hangzhou" />
-        <MetricCard icon="ti-cash" label="Pagamentos recebidos" value={fmtBRL(pagamentosRecebidos)} sub={`${confirmed.length} de ${fin?.min_vagas ?? 20}–${fin?.meta_vagas ?? 25} participantes pagaram`} valueClass="metric-ok" />
-        <MetricCard icon="ti-alert-circle" label="Faltam para o ponto de equilíbrio" value={fmtBRL(falta)} sub={`${minVagas} pax × ${fmtBRL(tierStandard)} — base mínima`} valueClass="metric-danger" />
+        <MetricCard icon="ti-users" label="Leads no funil" value={String(totalFunil)} sub={`${leadsAtivos} em negociação ativa`}
+          tooltip="Leads ainda em aberto no funil comercial: exclui os declinados e os que já avançaram para Confirmado ou Contrato. O subtítulo mostra quantos estão em etapa de negociação ativa." />
+        <MetricCard
+          icon="ti-check"
+          label="Confirmados"
+          value={String(confirmedTotal)}
+          sub={`meta: ${fin?.min_vagas ?? 20}–${fin?.meta_vagas ?? 25} vagas`}
+          valueClass="metric-ok"
+          tooltip="Soma das pessoas nas colunas Confirmados e Contratos do pipeline Comercial, incluindo participantes exibidos em Contratos que ainda não possuem um lead correspondente. O total é atualizado automaticamente conforme o pipeline."
+        />
+        <MetricCard icon="ti-calendar" label="Duração da missão" value="9 dias" sub="Pequim · Xangai · Hangzhou"
+          tooltip="Duração total da viagem à China: 9 dias percorrendo Pequim (capital política), Xangai (capital financeira) e Hangzhou (capital tecnológica)." />
+        <MetricCard icon="ti-cash" label="Pagamentos recebidos" value={fmtBRL(pagamentosRecebidos)} sub={`${paidInstallments.length} parcela(s) paga(s) de contratos assinados`} valueClass="metric-ok"
+          tooltip="Soma das parcelas já marcadas como pagas, considerando apenas participantes com contrato assinado. É o dinheiro efetivamente em caixa até agora." />
+        <MetricCard icon="ti-alert-circle" label="Valor restante para o mínimo viável" value={fmtBRL(falta)} sub={`mínimo viável: ${fmtBRL(minimoViavel)}`} valueClass="metric-danger"
+          tooltip="Quanto ainda falta receber para atingir o faturamento mínimo que torna a missão viável (R$ 1.800.000). Diminui conforme as parcelas são pagas." />
       </div>
 
       <div className="two-col">
@@ -40,7 +64,7 @@ export function DashboardPage() {
           <div className="panel-header"><i className="ti ti-git-branch" /> Status das 3 fases</div>
           <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <FaseStatus dot="var(--amber)" nome="Comercial" badge="Em andamento" badgeClass="badge-warn" desc={`Pipeline ativo — ${pendencias.filter((p) => p.fase === "comercial" && p.status !== "resolvida").length} pendências abertas`} />
-            <FaseStatus dot="var(--text3)" nome="Pré-viagem" badge={confirmed.length > 0 ? "Em andamento" : "Não iniciado"} badgeClass={confirmed.length > 0 ? "badge-warn" : "badge-neutral"} desc="Disparado após confirmação de pagamento (P7)" />
+            <FaseStatus dot="var(--text3)" nome="Pré-viagem" badge={confirmedTotal > 0 ? "Em andamento" : "Não iniciado"} badgeClass={confirmedTotal > 0 ? "badge-warn" : "badge-neutral"} desc="Disparado após confirmação comercial (P7)" />
             <FaseStatus dot="var(--text3)" nome="Viagem" badge="Não iniciado" badgeClass="badge-neutral" desc="Depende de definições abertas" />
           </div>
         </div>
@@ -69,16 +93,19 @@ export function DashboardPage() {
                 { p: 0, label: "P0 — Cadastro",   color: "#52b788" },
                 { p: 1, label: "P1 — Abordagem",   color: "var(--text3)" },
                 { p: 2, label: "P2 — Qualificação", color: "var(--purple)" },
-                { p: 3, label: "P3 — Mapa enviado", color: "var(--blue)" },
-                { p: 4, label: "P4 — Voos sugeridos", color: "#378add" },
-                { p: 5, label: "P5 — Go / No-go",  color: "var(--amber)" },
-                { p: 6, label: "P6 — Contrato",    color: "#d85a30" },
-                { p: 7, label: "P7 — Confirmado",  color: "var(--teal)" },
-                { p: 8, label: "Declinado",         color: "#c0392b" },
+                { p: STAGE_NEGOCIACAO, label: "Negociação", color: "var(--amber)" },
+                { p: 6, label: "P6 — Confirmado",  color: "#d85a30" },
+                { p: 7, label: "P7 — Contrato",    color: "var(--teal)" },
+                { p: -1, label: "Declinado",        color: "#c0392b" },
               ];
-              const max = Math.max(1, ...stages.map(({ p }) => leads.filter((l) => l.passo === p).length));
+              const countStage = (p: number) => {
+                if (p === -1) return leads.filter(isDeclined).length;
+                const leadCount = leads.filter((lead) => !isDeclined(lead) && pipelineStage(lead.passo) === p).length;
+                return p === STAGE_CONTRATO ? leadCount + orphanParticipants.length : leadCount;
+              };
+              const max = Math.max(1, ...stages.map(({ p }) => countStage(p)));
               return stages.map(({ p, label, color }) => {
-                const count = leads.filter((l) => l.passo === p).length;
+                const count = countStage(p);
                 return (
                   <div key={p} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ fontSize: 12, color: "var(--text2)", width: 130, flexShrink: 0 }}>{label}</span>
@@ -138,10 +165,31 @@ export function DashboardPage() {
   );
 }
 
-function MetricCard({ icon, label, value, sub, valueClass }: { icon: string; label: string; value: string; sub: string; valueClass?: string }) {
+function MetricCard({
+  icon,
+  label,
+  value,
+  sub,
+  valueClass,
+  tooltip,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+  sub: string;
+  valueClass?: string;
+  tooltip?: string;
+}) {
   return (
     <div className="metric-card">
-      <div className="metric-label"><i className={`ti ${icon}`} />{label}</div>
+      <div className="metric-label">
+        <i className={`ti ${icon}`} />{label}
+        {tooltip && (
+          <span className="metric-info" tabIndex={0} data-tooltip={tooltip} aria-label={tooltip}>
+            <i className="ti ti-info-circle" />
+          </span>
+        )}
+      </div>
       <div className={`metric-value ${valueClass ?? ""}`}>{value}</div>
       <div className="metric-sub">{sub}</div>
     </div>

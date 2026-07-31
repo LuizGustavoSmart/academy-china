@@ -182,6 +182,9 @@ export type Database = {
           data_nascimento: string | null
           email: string | null
           empresa: string | null
+          empresa_perfil: string | null
+          empresa_site: string | null
+          areas_interesse: string | null
           id: string
           medicamentos: string | null
           nome: string
@@ -191,6 +194,17 @@ export type Database = {
           origem: string | null
           pagamento_status: string | null
           passaporte: string | null
+          passaporte_emissao: string | null
+          passaporte_validade: string | null
+          nacionalidade: string | null
+          tipo_sanguineo: string | null
+          tamanho_camisa: string | null
+          tamanho_blazer: string | null
+          foto_url: string | null
+          voo_detalhes: Json | null
+          voo_volta_detalhes: Json | null
+          form_id: string | null
+          form_synced_at: string | null
           quarto: string | null
           restricoes_alimentares: string | null
           seguro_status: string | null
@@ -213,6 +227,9 @@ export type Database = {
           data_nascimento?: string | null
           email?: string | null
           empresa?: string | null
+          empresa_perfil?: string | null
+          empresa_site?: string | null
+          areas_interesse?: string | null
           id?: string
           medicamentos?: string | null
           nome: string
@@ -222,6 +239,17 @@ export type Database = {
           origem?: string | null
           pagamento_status?: string | null
           passaporte?: string | null
+          passaporte_emissao?: string | null
+          passaporte_validade?: string | null
+          nacionalidade?: string | null
+          tipo_sanguineo?: string | null
+          tamanho_camisa?: string | null
+          tamanho_blazer?: string | null
+          foto_url?: string | null
+          voo_detalhes?: Json | null
+          voo_volta_detalhes?: Json | null
+          form_id?: string | null
+          form_synced_at?: string | null
           quarto?: string | null
           restricoes_alimentares?: string | null
           seguro_status?: string | null
@@ -244,6 +272,9 @@ export type Database = {
           data_nascimento?: string | null
           email?: string | null
           empresa?: string | null
+          empresa_perfil?: string | null
+          empresa_site?: string | null
+          areas_interesse?: string | null
           id?: string
           medicamentos?: string | null
           nome?: string
@@ -253,6 +284,17 @@ export type Database = {
           origem?: string | null
           pagamento_status?: string | null
           passaporte?: string | null
+          passaporte_emissao?: string | null
+          passaporte_validade?: string | null
+          nacionalidade?: string | null
+          tipo_sanguineo?: string | null
+          tamanho_camisa?: string | null
+          tamanho_blazer?: string | null
+          foto_url?: string | null
+          voo_detalhes?: Json | null
+          voo_volta_detalhes?: Json | null
+          form_id?: string | null
+          form_synced_at?: string | null
           quarto?: string | null
           restricoes_alimentares?: string | null
           seguro_status?: string | null

@@ -21,6 +21,7 @@ export type Participant = {
   quarto: string | null;
   tier: string;
   valor_pago: number;
+  parcelas: number;
   pagamento_status: string;
   contrato_status: string;
   seguro_status: string;
@@ -31,6 +32,21 @@ export type Participant = {
   observacoes: string | null;
   status: string;
   created_at: string;
+  // ─── vindos do formulário público (china.matteracademy.ai/formulario) ───
+  foto_url: string | null;
+  nacionalidade: string | null;
+  tipo_sanguineo: string | null;
+  tamanho_camisa: string | null;
+  tamanho_blazer: string | null;
+  passaporte_emissao: string | null;
+  passaporte_validade: string | null;
+  empresa_perfil: string | null;
+  areas_interesse: string | null;
+  empresa_site: string | null;
+  voo_detalhes: Record<string, unknown> | null;
+  voo_volta_detalhes: Record<string, unknown> | null;
+  form_id: string | null;
+  form_synced_at: string | null;
 };
 
 export type Lead = {
@@ -49,6 +65,27 @@ export type Lead = {
   telefone: string | null;
   mensagem: string | null;
   origem: string | null;
+  cadastrado_por: string | null;
+  // Vínculo N:N carregado junto do lead (via lead_responsaveis). A coluna texto
+  // `responsavel` acima é legada e preservada só para compatibilidade.
+  responsaveis?: Responsavel[];
+};
+
+export type Responsavel = {
+  id: string;
+  nome: string;
+  cor: string | null;
+  ativo: boolean;
+  created_at?: string;
+};
+
+export type LeadActivity = {
+  id: string;
+  lead_id: string;
+  conteudo: string;
+  autor: string | null;
+  tipo: string;
+  created_at: string;
 };
 
 export type Touchpoint = {
@@ -95,6 +132,20 @@ export type Custo = {
   created_at: string;
 };
 
+export type ParcelaPagamento = {
+  id: string;
+  participant_id: string;
+  numero: number;
+  data_vencimento: string | null;
+  valor: number;
+  valor_manual?: boolean;
+  paga: boolean;
+  data_pagamento: string | null;
+  created_at: string;
+  updated_at: string;
+  local?: boolean;
+};
+
 export type Mensagem = {
   id: string;
   etapa: string;
@@ -109,6 +160,49 @@ export type Mensagem = {
 
 const sb = hubSupabase as any;
 
+// O front continua utilizável enquanto a migration comercial não foi aplicada no
+// ambiente remoto. Os IDs abaixo existem apenas no cliente e representam a coluna
+// texto legada `leads_crm.responsavel`.
+const LEGACY_RESPONSAVEIS: Responsavel[] = [
+  { id: "legacy-caetano", nome: "Caetano", cor: null, ativo: true },
+  { id: "legacy-roque", nome: "Roque", cor: null, ativo: true },
+];
+const legacyResponsavelFromName = (name: string): Responsavel => {
+  const clean = name.trim();
+  const known = LEGACY_RESPONSAVEIS.find((responsavel) => responsavel.nome.toLowerCase() === clean.toLowerCase());
+  return known ?? { id: `legacy-name:${encodeURIComponent(clean)}`, nome: clean, cor: null, ativo: true };
+};
+
+export type ParticipantActivity = {
+  id: string;
+  participant_id: string;
+  conteudo: string;
+  autor: string | null;
+  tipo: string;
+  created_at: string;
+};
+const legacyNameFromId = (id: string): string | null => {
+  const known = LEGACY_RESPONSAVEIS.find((responsavel) => responsavel.id === id);
+  if (known) return known.nome;
+  if (!id.startsWith("legacy-name:")) return null;
+  try { return decodeURIComponent(id.slice("legacy-name:".length)); } catch { return null; }
+};
+const isMissingCommercialTable = (error: any) =>
+  error?.code === "PGRST205" || error?.code === "42P01" || /schema cache|does not exist/i.test(error?.message ?? "");
+const responsaveisFromLegacy = (value: string | null | undefined): Responsavel[] => {
+  const clean = (value ?? "").trim();
+  const normalized = clean.toLowerCase();
+  if (!clean || normalized === "sem_responsavel") return [];
+  if (normalized === "ambos") return LEGACY_RESPONSAVEIS;
+  return clean.split(/\s*\+\s*/).filter(Boolean).map(legacyResponsavelFromName);
+};
+const legacyValueFromIds = (ids: string[]) => {
+  const names = ids.map(legacyNameFromId).filter(Boolean) as string[];
+  const normalized = names.map((name) => name.toLowerCase());
+  if (names.length === 2 && normalized.includes("caetano") && normalized.includes("roque")) return "ambos";
+  return names.join(" + ") || "sem_responsavel";
+};
+
 // ────────── PARTICIPANTS ──────────
 export function useParticipants() {
   return useQuery<Participant[]>({
@@ -116,7 +210,7 @@ export function useParticipants() {
     queryFn: async () => {
       const { data, error } = await sb.from("participants").select("*").order("created_at", { ascending: true });
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).filter((participant: Participant) => participant.status !== "removido_comercial");
     },
   });
 }
@@ -156,6 +250,7 @@ export function useUpdateParticipant() {
     onSuccess: (_d: any, v: any) => {
       qc.invalidateQueries({ queryKey: ["hub_participants"] });
       qc.invalidateQueries({ queryKey: ["hub_participant", v.id] });
+      qc.invalidateQueries({ queryKey: ["hub_parcelas_pagamento"] });
     },
   });
 }
@@ -176,9 +271,25 @@ export function useLeads() {
   return useQuery<Lead[]>({
     queryKey: ["hub_leads"],
     queryFn: async () => {
+      // Tenta trazer os responsáveis vinculados no mesmo request (embed via FK).
+      const embed = await sb
+        .from("leads_crm")
+        .select("*, lead_responsaveis(responsavel_id, responsaveis(id, nome, cor, ativo))")
+        .order("passo")
+        .order("ordem");
+      if (!embed.error) {
+        return (embed.data ?? []).map((l: any) => ({
+          ...l,
+          responsaveis: (l.lead_responsaveis ?? [])
+            .map((lr: any) => lr.responsaveis)
+            .filter(Boolean),
+          lead_responsaveis: undefined,
+        })).map(normalizeLeadForView);
+      }
+      // Fallback: se a migração ainda não rodou, projeta a coluna texto antiga como tags.
       const { data, error } = await sb.from("leads_crm").select("*").order("passo").order("ordem");
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).map((l: any) => normalizeLeadForView({ ...l, responsaveis: responsaveisFromLegacy(l.responsavel) }));
     },
   });
 }
@@ -187,7 +298,8 @@ export function useCreateLead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (l: Partial<Lead>) => {
-      const { data, error } = await sb.from("leads_crm").insert(l).select().single();
+      const safeLead = enforceLeadWorkflowState(l);
+      const { data, error } = await sb.from("leads_crm").insert(safeLead).select().single();
       if (error) throw error;
       return data;
     },
@@ -199,7 +311,29 @@ export function useUpdateLead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<Lead> }) => {
-      const { error } = await sb.from("leads_crm").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
+      let safePatch = patch;
+      if (patch.passo !== undefined || patch.status !== undefined) {
+        const { data: current, error: currentError } = await sb.from("leads_crm").select("passo,status,nome").eq("id", id).single();
+        if (currentError) throw currentError;
+        safePatch = enforceLeadWorkflowState(patch, current);
+        const nextPasso = safePatch.passo ?? current.passo;
+        const wasContracted = current.passo === STAGE_CONTRATO && normalizeStatus(current.status) !== "declinado";
+        const willBeContracted = nextPasso === STAGE_CONTRATO && normalizeStatus(safePatch.status ?? current.status) !== "declinado";
+        if (wasContracted && !willBeContracted) {
+          const { error: removeError } = await sb.from("participants")
+            .update({ status: "removido_comercial", updated_at: new Date().toISOString() })
+            .eq("nome", current.nome);
+          if (removeError) throw removeError;
+        }
+        if (!wasContracted && willBeContracted) {
+          const { error: reactivateError } = await sb.from("participants")
+            .update({ status: "em_andamento", updated_at: new Date().toISOString() })
+            .eq("nome", current.nome)
+            .eq("status", "removido_comercial");
+          if (reactivateError) throw reactivateError;
+        }
+      }
+      const { error } = await sb.from("leads_crm").update({ ...safePatch, updated_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_leads"] }),
@@ -214,6 +348,194 @@ export function useDeleteLead() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_leads"] }),
+  });
+}
+
+// ────────── RESPONSÁVEIS ──────────
+export function useResponsaveis() {
+  return useQuery<Responsavel[]>({
+    queryKey: ["hub_responsaveis"],
+    queryFn: async () => {
+      const { data, error } = await sb.from("responsaveis").select("*").order("nome");
+      if (error && isMissingCommercialTable(error)) {
+        const { data: leads, error: leadsError } = await sb.from("leads_crm").select("responsavel");
+        if (leadsError) throw leadsError;
+        const all = [...LEGACY_RESPONSAVEIS, ...(leads ?? []).flatMap((lead: any) => responsaveisFromLegacy(lead.responsavel))];
+        return [...new Map(all.map((responsavel) => [responsavel.nome.toLowerCase(), responsavel])).values()]
+          .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+      }
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useCreateResponsavel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (nome: string) => {
+      const clean = nome.trim();
+      if (!clean) throw new Error("Nome vazio");
+      // Reaproveita um responsável de mesmo nome (case-insensitive) em vez de duplicar.
+      const { data: existing, error: findError } = await sb.from("responsaveis").select("*").ilike("nome", clean).maybeSingle();
+      if (findError && isMissingCommercialTable(findError)) return legacyResponsavelFromName(clean);
+      if (findError) throw findError;
+      if (existing) return existing as Responsavel;
+      const { data, error } = await sb.from("responsaveis").insert({ nome: clean }).select().single();
+      if (error && isMissingCommercialTable(error)) return legacyResponsavelFromName(clean);
+      if (error) throw error;
+      return data as Responsavel;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_responsaveis"] }),
+  });
+}
+
+export function useUpdateResponsavel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<Pick<Responsavel, "nome" | "cor" | "ativo">> }) => {
+      if (id.startsWith("legacy-")) throw new Error("Responsável legado não pode ser editado.");
+      const clean = { ...patch, ...(patch.nome !== undefined ? { nome: patch.nome.trim() } : {}) };
+      const { data, error } = await sb.from("responsaveis").update(clean).eq("id", id).select().single();
+      if (error) throw error;
+      return data as Responsavel;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["hub_responsaveis"] });
+      qc.invalidateQueries({ queryKey: ["hub_leads"] });
+    },
+  });
+}
+
+export function useDeleteResponsavel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (id.startsWith("legacy-")) throw new Error("Responsável legado não pode ser excluído.");
+      // Remove vínculos antes para evitar erro de FK caso não haja cascade.
+      await sb.from("lead_responsaveis").delete().eq("responsavel_id", id);
+      const { error } = await sb.from("responsaveis").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["hub_responsaveis"] });
+      qc.invalidateQueries({ queryKey: ["hub_leads"] });
+    },
+  });
+}
+
+/** Substitui o conjunto de responsáveis de um lead pelo array informado. */
+export function useSetLeadResponsaveis() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ leadId, responsavelIds }: { leadId: string; responsavelIds: string[] }) => {
+      const saveLegacy = async () => {
+        const { error } = await sb.from("leads_crm").update({ responsavel: legacyValueFromIds(responsavelIds) }).eq("id", leadId);
+        if (error) throw error;
+      };
+      if (responsavelIds.some((id) => id.startsWith("legacy-"))) {
+        await saveLegacy();
+        return;
+      }
+      // A troca inteira acontece no banco em uma única transação. Antes, o
+      // cliente apagava os vínculos e só então inseria os novos: uma falha no
+      // meio do processo fazia a tela parecer salva, mas o lead ficava sem os
+      // responsáveis (ou voltava ao estado anterior ao recarregar).
+      const { error: replaceError } = await sb.rpc("replace_lead_responsaveis", {
+        p_lead_id: leadId,
+        p_responsavel_ids: [...new Set(responsavelIds)],
+      });
+      if (!replaceError) return;
+      if (!isMissingCommercialTable(replaceError) && replaceError?.code !== "PGRST202") throw replaceError;
+
+      // Compatibilidade temporária para ambientes nos quais a migration da
+      // função ainda não chegou. O caminho abaixo preserva o comportamento
+      // anterior, mas os ambientes atualizados sempre usam a operação atômica.
+      const { error: delErr } = await sb.from("lead_responsaveis").delete().eq("lead_id", leadId);
+      if (delErr && isMissingCommercialTable(delErr)) {
+        await saveLegacy();
+        return;
+      }
+      if (delErr) throw delErr;
+      if (responsavelIds.length) {
+        const rows = responsavelIds.map((responsavel_id) => ({ lead_id: leadId, responsavel_id }));
+        const { error } = await sb.from("lead_responsaveis").insert(rows);
+        if (error) throw error;
+      }
+      const legacyValue = responsavelIds.length
+        ? await (async () => {
+            const { data, error } = await sb.from("responsaveis").select("nome").in("id", responsavelIds);
+            if (error) throw error;
+            return (data ?? []).map((responsavel: any) => responsavel.nome).join(" + ") || "sem_responsavel";
+          })()
+        : "sem_responsavel";
+      // Mantém a coluna antiga coerente para integrações que ainda a consomem.
+      const { error: legacyError } = await sb.from("leads_crm").update({ responsavel: legacyValue }).eq("id", leadId);
+      if (legacyError) throw legacyError;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["hub_leads"] }),
+        qc.invalidateQueries({ queryKey: ["hub_responsaveis"] }),
+      ]);
+    },
+  });
+}
+
+// ────────── LEAD ACTIVITIES (timeline) ──────────
+export function useLeadActivities(leadId: string | null) {
+  return useQuery<LeadActivity[]>({
+    queryKey: ["hub_lead_activities", leadId],
+    enabled: !!leadId,
+    queryFn: async () => {
+      if (!leadId) return [];
+      const { data, error } = await sb
+        .from("lead_activities")
+        .select("*")
+        .eq("lead_id", leadId)
+        .order("created_at", { ascending: false });
+      if (error && isMissingCommercialTable(error)) return [];
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useCreateLeadActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (a: { lead_id: string; conteudo: string; autor?: string | null; tipo?: string }) => {
+      const { data, error } = await sb.from("lead_activities").insert(a).select().single();
+      if (error && isMissingCommercialTable(error)) return null;
+      if (error) throw error;
+      // Espelha cada nova atividade para os participantes do mesmo contato.
+      // A falha no espelho não pode desfazer a nota já gravada no Comercial.
+      await mirrorLeadActivityToParticipants(a.lead_id, data as LeadActivity);
+      return data as LeadActivity;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["hub_lead_activities", v.lead_id] }),
+  });
+}
+
+export function useUpdateLeadActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (a: { id: string; lead_id: string; conteudo: string }) => {
+      const { error } = await sb.from("lead_activities").update({ conteudo: a.conteudo }).eq("id", a.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["hub_lead_activities", v.lead_id] }),
+  });
+}
+
+export function useDeleteLeadActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (a: { id: string; lead_id: string }) => {
+      const { error } = await sb.from("lead_activities").delete().eq("id", a.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["hub_lead_activities", v.lead_id] }),
   });
 }
 
@@ -239,6 +561,36 @@ export function useUpsertTouchpoint() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_touchpoints"] }),
+  });
+}
+
+// Batch upsert com update otimista — usado pelo kanban de pré-viagem (mover card = várias etapas de uma vez)
+export function useUpsertTouchpoints() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ts: { participant_id: string; touchpoint_code: string; status: string }[]) => {
+      const now = new Date().toISOString();
+      const { error } = await sb
+        .from("touchpoints")
+        .upsert(ts.map((t) => ({ ...t, updated_at: now })), { onConflict: "participant_id,touchpoint_code" });
+      if (error) throw error;
+    },
+    onMutate: async (ts) => {
+      await qc.cancelQueries({ queryKey: ["hub_touchpoints"] });
+      const prev = qc.getQueryData<Touchpoint[]>(["hub_touchpoints"]);
+      qc.setQueryData<Touchpoint[]>(["hub_touchpoints"], (old = []) => {
+        const next = [...old];
+        for (const t of ts) {
+          const i = next.findIndex((x) => x.participant_id === t.participant_id && x.touchpoint_code === t.touchpoint_code);
+          if (i >= 0) next[i] = { ...next[i], status: t.status };
+          else next.push({ id: `tmp-${t.participant_id}-${t.touchpoint_code}`, ...t } as Touchpoint);
+        }
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => { if (ctx?.prev) qc.setQueryData(["hub_touchpoints"], ctx.prev); },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["hub_touchpoints"] }),
   });
 }
 
@@ -311,6 +663,260 @@ export function useUpdateFinanceiroConfig() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_financeiro_config"] }),
+  });
+}
+
+// ────────── PARCELAS DE PAGAMENTO ──────────
+type LocalParcelaOverride = {
+  data_vencimento?: string | null;
+  valor?: number;
+  valor_manual?: boolean;
+  paga?: boolean;
+  data_pagamento?: string | null;
+};
+
+const LOCAL_PARCELAS_KEY = "academy-china:parcelas-pagamento";
+
+function readLocalParcelas(): Record<string, LocalParcelaOverride> {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(LOCAL_PARCELAS_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+function writeLocalParcelas(value: Record<string, LocalParcelaOverride>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LOCAL_PARCELAS_KEY, JSON.stringify(value));
+}
+
+function distributeAutomaticParcelas(
+  parcelas: ParcelaPagamento[],
+  totalCentavos: number,
+): ParcelaPagamento[] {
+  let next = parcelas.map((parcela) => ({ ...parcela }));
+  let manualCentavos = next
+    .filter((parcela) => parcela.valor_manual)
+    .reduce((total, parcela) => total + Math.round(Number(parcela.valor || 0) * 100), 0);
+  let automaticas = next.filter((parcela) => !parcela.valor_manual);
+
+  if (
+    manualCentavos > totalCentavos
+    || (automaticas.length === 0 && manualCentavos !== totalCentavos)
+  ) {
+    next = next.map((parcela) => ({ ...parcela, valor_manual: false }));
+    manualCentavos = 0;
+    automaticas = next;
+  }
+
+  if (automaticas.length === 0) return next;
+  const restante = totalCentavos - manualCentavos;
+  const base = Math.floor(restante / automaticas.length);
+  const sobra = restante - base * automaticas.length;
+  const lastAutomaticId = automaticas[automaticas.length - 1].id;
+
+  return next.map((parcela) => {
+    if (parcela.valor_manual) return parcela;
+    const centavos = base + (parcela.id === lastAutomaticId ? sobra : 0);
+    return { ...parcela, valor: centavos / 100 };
+  });
+}
+
+function redistributeEditedParcela(
+  parcelas: ParcelaPagamento[],
+  targetId: string,
+  targetValue: number,
+): ParcelaPagamento[] {
+  if (parcelas.length === 0) {
+    throw new Error("Não foi possível localizar as parcelas deste contrato.");
+  }
+  const totalCentavos = parcelas.reduce(
+    (total, parcela) => total + Math.round(Number(parcela.valor || 0) * 100),
+    0,
+  );
+  let next = parcelas.map((parcela) => parcela.id === targetId
+    ? { ...parcela, valor: targetValue, valor_manual: true }
+    : { ...parcela });
+
+  if (next.length === 1) {
+    if (Math.round(targetValue * 100) !== totalCentavos) {
+      throw new Error("A única parcela deve ter o mesmo valor do contrato.");
+    }
+    return next;
+  }
+
+  if (!next.some((parcela) => !parcela.valor_manual)) {
+    const compensation = [...next]
+      .filter((parcela) => parcela.id !== targetId)
+      .sort((a, b) => b.numero - a.numero)[0];
+    next = next.map((parcela) => parcela.id === compensation.id
+      ? { ...parcela, valor_manual: false }
+      : parcela);
+  }
+
+  const manualCentavos = next
+    .filter((parcela) => parcela.valor_manual)
+    .reduce((total, parcela) => total + Math.round(Number(parcela.valor || 0) * 100), 0);
+  if (manualCentavos > totalCentavos) {
+    throw new Error("A soma das parcelas manuais ultrapassa o valor do contrato.");
+  }
+  return distributeAutomaticParcelas(next, totalCentavos);
+}
+
+function buildLocalParcelas(participants: Participant[]): ParcelaPagamento[] {
+  const overrides = readLocalParcelas();
+  const now = new Date().toISOString();
+
+  return participants.flatMap((participant) => {
+    const quantidade = Math.max(1, Number(participant.parcelas) || 1);
+    const totalCentavos = Math.round(Number(participant.valor_pago || 0) * 100);
+    const baseCentavos = Math.floor(totalCentavos / quantidade);
+
+    const rows = Array.from({ length: quantidade }, (_, index) => {
+      const numero = index + 1;
+      const id = `local:${participant.id}:${numero}`;
+      const override = overrides[id] ?? {};
+      const valorCentavos = numero === quantidade
+        ? totalCentavos - baseCentavos * (quantidade - 1)
+        : baseCentavos;
+      const paga = override.paga ?? participant.pagamento_status === "confirmado";
+
+      return {
+        id,
+        participant_id: participant.id,
+        numero,
+        data_vencimento: override.data_vencimento ?? null,
+        valor: override.valor ?? valorCentavos / 100,
+        valor_manual: override.valor_manual ?? false,
+        paga,
+        data_pagamento: override.data_pagamento ?? (paga ? now : null),
+        created_at: now,
+        updated_at: now,
+        local: true,
+      };
+    });
+    return distributeAutomaticParcelas(rows, totalCentavos);
+  });
+}
+
+export function useParcelasPagamento(participantId?: string) {
+  const qc = useQueryClient();
+  return useQuery<ParcelaPagamento[]>({
+    queryKey: ["hub_parcelas_pagamento", participantId ?? "all"],
+    queryFn: async () => {
+      let query = sb.from("parcelas_pagamento").select("*").order("numero");
+      if (participantId) query = query.eq("participant_id", participantId);
+      const { data, error } = await query;
+      if (error) {
+        let participants = qc.getQueryData<Participant[]>(["hub_participants"]) ?? [];
+        if (participantId) {
+          const cached = qc.getQueryData<Participant | null>(["hub_participant", participantId]);
+          if (cached) participants = [cached];
+          else participants = participants.filter((participant) => participant.id === participantId);
+        }
+        if (participants.length === 0) {
+          let participantQuery = sb.from("participants").select("*");
+          if (participantId) participantQuery = participantQuery.eq("id", participantId);
+          const fallback = await participantQuery;
+          if (fallback.error) throw error;
+          participants = fallback.data ?? [];
+        }
+        return buildLocalParcelas(participants);
+      }
+      return data ?? [];
+    },
+  });
+}
+
+export function useUpdateParcelaPagamento() {
+  const qc = useQueryClient();
+  const cachedParticipantParcelas = (id: string) => {
+    const matches = qc
+      .getQueriesData<ParcelaPagamento[]>({ queryKey: ["hub_parcelas_pagamento"] })
+      .map(([, data]) => data ?? [])
+      .find((data) => data.some((parcela) => parcela.id === id)) ?? [];
+    const target = matches.find((parcela) => parcela.id === id);
+    return target
+      ? matches.filter((parcela) => parcela.participant_id === target.participant_id)
+      : [];
+  };
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: Pick<Partial<ParcelaPagamento>, "data_vencimento" | "valor" | "paga">;
+    }) => {
+      if (id.startsWith("local:")) {
+        const overrides = readLocalParcelas();
+        if (patch.valor !== undefined) {
+          const next = redistributeEditedParcela(
+            cachedParticipantParcelas(id),
+            id,
+            patch.valor,
+          );
+          for (const parcela of next) {
+            overrides[parcela.id] = {
+              ...overrides[parcela.id],
+              valor: parcela.valor,
+              valor_manual: parcela.valor_manual,
+            };
+          }
+        } else {
+          const current = overrides[id] ?? {};
+          overrides[id] = {
+            ...current,
+            ...patch,
+            ...(patch.paga !== undefined
+              ? { data_pagamento: patch.paga ? new Date().toISOString() : null }
+              : {}),
+          };
+        }
+        writeLocalParcelas(overrides);
+        return;
+      }
+      if (patch.valor !== undefined) {
+        const rpc = await sb.rpc("update_parcela_valor", {
+          p_parcela_id: id,
+          p_valor: patch.valor,
+        });
+        if (!rpc.error) return;
+
+        // Compatibilidade temporária enquanto a nova migration ainda não foi
+        // aplicada: redistribui no cliente e persiste somente os valores.
+        const next = redistributeEditedParcela(
+          cachedParticipantParcelas(id),
+          id,
+          patch.valor,
+        );
+        const updates = await Promise.all(next.map((parcela) =>
+          sb
+            .from("parcelas_pagamento")
+            .update({ valor: parcela.valor, updated_at: new Date().toISOString() })
+            .eq("id", parcela.id),
+        ));
+        const failed = updates.find((result) => result.error);
+        if (failed?.error) throw failed.error;
+        return;
+      }
+      const payload: Record<string, unknown> = {
+        ...patch,
+        updated_at: new Date().toISOString(),
+      };
+      if (patch.paga !== undefined) {
+        payload.data_pagamento = patch.paga ? new Date().toISOString() : null;
+      }
+      const { error } = await sb.from("parcelas_pagamento").update(payload).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["hub_parcelas_pagamento"] });
+      qc.invalidateQueries({ queryKey: ["hub_participants"] });
+      qc.invalidateQueries({ queryKey: ["hub_participant"] });
+    },
   });
 }
 
@@ -403,6 +1009,19 @@ export function useUpdateMensagem() {
 }
 
 // ────────── HELPERS ──────────
+// Os valores numéricos de `passo` dos leads já existentes NUNCA são renumerados —
+// isso preservaria a etapa real deles só depois que uma migração rodasse no banco,
+// e o front já mostraria os rótulos novos antes disso, criando etapas erradas para
+// leads antigos. Por isso "Negociação" entra com um valor NOVO (9), sem deslocar
+// nenhuma etapa existente; a ordem visual no funil vem de `STAGE_ORDER`, separada
+// do valor numérico armazenado. "Declinado" não é uma etapa: é só um status
+// (ver `isDeclined`) — o `passo` de um lead declinado continua sendo a etapa real
+// em que ele estava.
+export const STAGE_NEGOCIACAO = 9;
+export const STAGE_CONFIRMADO = 6;
+export const STAGE_CONTRATO = 7;
+/** Etapas removidas do funil visual; os registros históricos delas ficam agrupados em Negociação. */
+export const LEGACY_NEGOTIATION_STAGES = [3, 4, 5];
 export const PASSO_LABELS: Record<number, string> = {
   0: "P0 — Cadastro",
   1: "P1 — Abordagem",
@@ -410,15 +1029,206 @@ export const PASSO_LABELS: Record<number, string> = {
   3: "P3 — Mapa enviado",
   4: "P4 — Voos sugeridos",
   5: "P5 — Go / No-go",
-  6: "P6 — Contrato",
-  7: "P7 — Confirmado",
-  8: "Declinado",
+  6: "P6 — Confirmado",
+  7: "P7 — Contrato",
+  [STAGE_NEGOCIACAO]: "Negociação",
 };
+/** Ordem visual das etapas no funil (kanban, filtros, seletores) — independente
+ * do valor numérico de `passo` armazenado no banco. */
+export const STAGE_ORDER = [0, 1, 2, STAGE_NEGOCIACAO, 6, 7];
+/** Etapas consideradas "em negociação ativa" para os indicadores do dashboard. */
+export const NEGOTIATION_STAGES = [STAGE_NEGOCIACAO, ...LEGACY_NEGOTIATION_STAGES];
+/** Converte os passos antigos P3/P4/P5 para a única coluna de Negociação sem perder os dados históricos. */
+export const pipelineStage = (passo: number): number =>
+  LEGACY_NEGOTIATION_STAGES.includes(passo) ? STAGE_NEGOCIACAO : passo;
+/** Rótulo de uma etapa com fallback — leads antigos que usavam o sentinela
+ * legado (passo=8, "Declinado" antes de virar status) não têm entrada aqui. */
+export const passoLabel = (n: number): string => PASSO_LABELS[n] ?? "Etapa anterior (legado)";
 
 export const fmtBRL = (n: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(n);
+  new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(n);
 
 export const respLabel = (r: string) =>
   r === "roque" ? "Roque" : r === "caetano" ? "Caetano" : "Caetano + Roque";
 export const respClass = (r: string) =>
   r === "roque" ? "resp-roque" : r === "caetano" ? "resp-caetano" : "resp-ambos";
+
+// ────────── STATUS ESTRUTURADO ──────────
+export const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: "novo", label: "Novo" },
+  { value: "abordado", label: "Abordado" },
+  { value: "em_negociacao", label: "Em negociação" },
+  { value: "confirmado", label: "Confirmado" },
+  { value: "declinado", label: "Declinado" },
+];
+const STATUS_ALIASES: Record<string, string> = {
+  cadastro: "novo",
+  cadastrado: "novo",
+  indefinido: "novo",
+  "": "novo",
+  negociacao: "em_negociacao",
+  "em negociacao": "em_negociacao",
+  "em negociação": "em_negociacao",
+};
+/** Normaliza um status livre antigo para um dos valores estruturados. */
+export const normalizeStatus = (s: string | null | undefined): string => {
+  if (!s) return "novo";
+  const low = s.toLowerCase().trim();
+  if (STATUS_ALIASES[low]) return STATUS_ALIASES[low];
+  if (STATUS_OPTIONS.some((o) => o.value === low)) return low;
+  return s; // status desconhecido: exibe como veio
+};
+/** Status efetivo mostrado no CRM. P6 é a confirmação; fora de P6, "Confirmado"
+ * é tratado como negociação até o registro ser persistido novamente. */
+export const effectiveLeadStatus = (lead: Pick<Lead, "passo" | "status">): string => {
+  const status = normalizeStatus(lead.status);
+  if (status === "declinado") return status;
+  if (lead.passo === STAGE_CONFIRMADO) return "confirmado";
+  return status === "confirmado" ? "em_negociacao" : status;
+};
+export const isConfirmedLead = (lead: Pick<Lead, "passo" | "status">): boolean =>
+  effectiveLeadStatus(lead) === "confirmado" && lead.passo === STAGE_CONFIRMADO;
+function normalizeLeadForView(lead: Lead): Lead {
+  return { ...lead, status: effectiveLeadStatus(lead) };
+}
+
+// ────────── PARTICIPANT ACTIVITIES (timeline da Pré-viagem) ──────────
+export function useParticipantActivities(participantId: string | null) {
+  return useQuery<ParticipantActivity[]>({
+    queryKey: ["hub_participant_activities", participantId],
+    enabled: !!participantId,
+    queryFn: async () => {
+      if (!participantId) return [];
+      const { data, error } = await sb
+        .from("participant_activities")
+        .select("*")
+        .eq("participant_id", participantId)
+        .order("created_at", { ascending: false });
+      if (error && isMissingCommercialTable(error)) return [];
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useCreateParticipantActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (a: { participant_id: string; conteudo: string; autor?: string | null; tipo?: string; created_at?: string }) => {
+      const { data, error } = await sb.from("participant_activities").insert(a).select().single();
+      if (error && isMissingCommercialTable(error)) return null;
+      if (error) throw error;
+      return data as ParticipantActivity;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["hub_participant_activities", v.participant_id] }),
+  });
+}
+
+export function useUpdateParticipantActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (a: { id: string; participant_id: string; conteudo: string }) => {
+      const { error } = await sb.from("participant_activities").update({ conteudo: a.conteudo }).eq("id", a.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["hub_participant_activities", v.participant_id] }),
+  });
+}
+
+export function useDeleteParticipantActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (a: { id: string; participant_id: string }) => {
+      const { error } = await sb.from("participant_activities").delete().eq("id", a.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["hub_participant_activities", v.participant_id] }),
+  });
+}
+
+export async function copyLeadHistoryToParticipant(leadId: string, participantId: string) {
+  const { data, error } = await sb
+    .from("lead_activities")
+    .select("conteudo, autor, tipo, created_at")
+    .eq("lead_id", leadId)
+    .order("created_at", { ascending: true });
+  if (error && isMissingCommercialTable(error)) return;
+  if (error) throw error;
+  if (!data?.length) return;
+  const rows = data.map((a: Pick<LeadActivity, "conteudo" | "autor" | "tipo" | "created_at">) => ({ ...a, participant_id: participantId }));
+  const { error: insertError } = await sb.from("participant_activities").insert(rows);
+  if (insertError && isMissingCommercialTable(insertError)) return;
+  if (insertError) throw insertError;
+}
+
+async function mirrorLeadActivityToParticipants(leadId: string, activity: LeadActivity) {
+  const { data: lead, error: leadError } = await sb.from("leads_crm").select("nome").eq("id", leadId).maybeSingle();
+  if (leadError || !lead?.nome) return;
+  const { data: participants, error: participantsError } = await sb.from("participants").select("id").eq("nome", lead.nome);
+  if (participantsError || !participants?.length) return;
+  const rows = participants.map((participant: Pick<Participant, "id">) => ({
+    participant_id: participant.id,
+    conteudo: activity.conteudo,
+    autor: activity.autor,
+    tipo: activity.tipo,
+    created_at: activity.created_at,
+  }));
+  const { error } = await sb.from("participant_activities").insert(rows);
+  // Em instalações antigas, a migration pode ainda não ter criado a tabela;
+  // a timeline vinculada continua exibindo a nota comercial nesse intervalo.
+  if (error && !isMissingCommercialTable(error)) return;
+}
+/** Regra única do funil: apenas P6 pode carregar o status Confirmado.
+ * Ao confirmar, o lead vai para P6; ao retornar de P6, deixa de ser confirmado. */
+export function enforceLeadWorkflowState<T extends Partial<Pick<Lead, "passo" | "status">>>(
+  patch: T,
+  current?: Pick<Lead, "passo" | "status">,
+): T {
+  const next = { ...patch } as T & { passo?: number; status?: string | null };
+  let passo = next.passo ?? current?.passo;
+  let status = normalizeStatus(next.status ?? current?.status);
+
+  // Escolher explicitamente o status Confirmado sempre promove para P6. Já uma mudança
+  // de etapa para fora de P6 rebaixa o status, em vez de devolver o card ao P6.
+  if (patch.status !== undefined && normalizeStatus(patch.status) === "confirmado") passo = STAGE_CONFIRMADO;
+  if (passo === STAGE_CONFIRMADO && status !== "declinado") status = "confirmado";
+  if (passo !== undefined && passo !== STAGE_CONFIRMADO && status === "confirmado") status = "em_negociacao";
+
+  if (patch.passo !== undefined || passo === STAGE_CONFIRMADO) next.passo = passo;
+  if (patch.status !== undefined || passo === STAGE_CONFIRMADO || (current && current.passo === STAGE_CONFIRMADO && passo !== STAGE_CONFIRMADO)) next.status = status;
+  return next;
+}
+export const statusLabel = (s: string | null | undefined): string => {
+  const v = normalizeStatus(s);
+  return STATUS_OPTIONS.find((o) => o.value === v)?.label ?? v;
+};
+export const STATUS_BADGE_CLASS: Record<string, string> = {
+  novo: "badge-neutral",
+  abordado: "badge-blue",
+  em_negociacao: "badge-warn",
+  confirmado: "badge-ok",
+  declinado: "badge-danger",
+};
+export const statusBadgeClass = (s: string | null | undefined) =>
+  STATUS_BADGE_CLASS[normalizeStatus(s)] ?? "badge-neutral";
+
+/** Um lead declinado deixa de ser ativo (não conta no funil, não aparece no pipeline normal).
+ * É puramente uma questão de status — o `passo` continua guardando a etapa real em que
+ * o lead estava, para que a reativação volte a um lugar coerente. */
+export const isDeclined = (l: Lead): boolean =>
+  normalizeStatus(l.status) === "declinado";
+
+// ────────── AVATAR / COR DE RESPONSÁVEL ──────────
+const RESP_HUES = [210, 262, 330, 150, 25, 190, 285, 95, 45, 0];
+export function respAvatar(nome: string): { initials: string; color: string } {
+  let h = 0;
+  for (let i = 0; i < nome.length; i++) h = (h * 31 + nome.charCodeAt(i)) >>> 0;
+  const parts = nome.trim().split(/\s+/);
+  const initials = ((parts[0]?.[0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+  return { initials: initials || "?", color: `hsl(${RESP_HUES[h % RESP_HUES.length]} 42% 46%)` };
+}

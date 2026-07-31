@@ -113,7 +113,7 @@ export const Route = createFileRoute("/api/public/leads")({
             ip,
             passo: 0,
             responsavel: "caetano",
-            status: "cadastro",
+            status: "novo",
             ordem: 0,
           });
           if (error) {

@@ -1,11 +1,28 @@
-import { useParticipants, useTouchpoints, useUpsertTouchpoint, type Participant, type Touchpoint } from "@/lib/hub-api";
+import { useState, useSyncExternalStore } from "react";
+import { intervalToDuration } from "date-fns";
+import { useParcelasPagamento, useParticipants, useTouchpoints, useUpsertTouchpoint, type Participant, type Touchpoint } from "@/lib/hub-api";
 import { MensagensAccordion } from "@/components/hub/MensagensAccordion";
 import { PendenciasList } from "@/components/hub/PendenciasList";
+import { PreViagemKanban } from "@/components/hub/PreViagemKanban";
 
 const TPS = ["D-60", "D-45", "D-30", "D-21", "D-14", "D-7", "D-3"];
 const TP_NAMES: Record<string, string> = { "D-60": "Kickoff", "D-45": "Aquecimento", "D-30": "Logística", "D-21": "Dicas", "D-14": "Confirm.", "D-7": "Vídeos", "D-3": "Pré-emb." };
 const DEPARTURE_DATE = new Date("2026-10-28");
+const COUNTDOWN_TARGET = new Date("2026-10-28T00:00:00-03:00");
 const TP_DAYS: Record<string, number> = { "D-60": 60, "D-45": 45, "D-30": 30, "D-21": 21, "D-14": 14, "D-7": 7, "D-3": 3 };
+
+function subscribeToClock(onTick: () => void) {
+  const intervalId = window.setInterval(onTick, 1_000);
+  return () => window.clearInterval(intervalId);
+}
+
+function getClockSnapshot() {
+  return Math.floor(Date.now() / 1_000);
+}
+
+function getServerClockSnapshot() {
+  return 0;
+}
 
 function getTpDate(code: string): Date {
   const d = new Date(DEPARTURE_DATE);
@@ -39,16 +56,40 @@ function getActiveStage(pid: string, tpsList: Touchpoint[]): string | null {
 }
 
 export function PreViagemPage({ sub, onViewParticipant }: { sub: string; onViewParticipant?: (id: string) => void }) {
-  if (sub === "pipeline") return <TouchpointGrid onViewParticipant={onViewParticipant} />;
+  if (sub === "pipeline") return <PipelineView onViewParticipant={onViewParticipant} />;
   if (sub === "parts") return <PartsCompactList onViewParticipant={onViewParticipant} />;
   if (sub === "mensagens") return <MensagensAccordion etapa="preop" intro="Mensagens em ordem cronológica (D-60 → D-3). D-60 e D-3 são obrigatórios e síncronos." />;
   if (sub === "pendencias") return <PendenciasList fase="preop" title="Pendências — fase pré-viagem" />;
   return <PreDash />;
 }
 
+function PipelineView({ onViewParticipant }: { onViewParticipant?: (id: string) => void }) {
+  const [view, setView] = useState<"kanban" | "tabela">("kanban");
+  return (
+    <div style={{ position: "relative" }}>
+      <div style={{ position: "absolute", top: 20, right: 28, zIndex: 5, display: "flex", gap: 2, background: "var(--surface2)", border: ".5px solid var(--border)", borderRadius: 8, padding: 2 }}>
+        {(["kanban", "tabela"] as const).map((v) => (
+          <button key={v} onClick={() => setView(v)}
+            style={{
+              fontSize: 11, fontWeight: 500, padding: "4px 12px", borderRadius: 6, border: "none", cursor: "pointer",
+              background: view === v ? "var(--surface)" : "transparent",
+              color: view === v ? "var(--text)" : "var(--text3)",
+              boxShadow: view === v ? "0 1px 3px rgba(0,0,0,.1)" : "none",
+            }}>
+            <i className={`ti ${v === "kanban" ? "ti-layout-kanban" : "ti-table"}`} style={{ marginRight: 4 }} />
+            {v === "kanban" ? "Kanban" : "Tabela"}
+          </button>
+        ))}
+      </div>
+      {view === "kanban" ? <PreViagemKanban onViewParticipant={onViewParticipant} /> : <TouchpointGrid onViewParticipant={onViewParticipant} />}
+    </div>
+  );
+}
+
 function PreDash() {
   return (
-    <div className="main">
+    <div className="main main-wide">
+      <TripCountdown />
       <div className="metrics">
         <Metric icon="ti-calendar" label="Janela total" value="~60" sub="dias antes do embarque" />
         <Metric icon="ti-video" label="Síncronos obrigatórios" value="2" sub="Kickoff D-60 + pré-embarque D-3" />
@@ -68,7 +109,7 @@ function PreDash() {
           ["D-14","Recomendado · async","Confirmação logística","Voos, documentos, seguro viagem (obrigatório)","ti-checklist","Checklist",false],
           ["D-7","Recomendado · async","Preparo vídeos","Dinâmica do videomaker, uso de imagem","ti-brand-whatsapp","WhatsApp",false],
           ["D-3","Obrigatório · síncrono","Pré-embarque","Checklist final, ponto de encontro, contato de emergência","ti-video","Live",true],
-        ].map((tp: any, i) => (
+        ].map((tp, i) => (
           <div key={i} className={`tp-card ${tp[6] ? "tp-obrigatorio" : "tp-opcional"}`}>
             <div className="tp-day">{tp[0]}</div>
             <div className="tp-tipo">{tp[1]}</div>
@@ -82,7 +123,54 @@ function PreDash() {
   );
 }
 
-function Metric({ icon, label, value, sub }: any) {
+function TripCountdown() {
+  const clockSeconds = useSyncExternalStore(subscribeToClock, getClockSnapshot, getServerClockSnapshot);
+  const now = clockSeconds * 1_000;
+  const remainingMs = clockSeconds === 0 ? null : Math.max(0, COUNTDOWN_TARGET.getTime() - now);
+  const hasStarted = remainingMs === 0;
+  const duration = remainingMs && remainingMs > 0
+    ? intervalToDuration({ start: new Date(now), end: COUNTDOWN_TARGET })
+    : {};
+  const totalDays = remainingMs === null ? null : Math.ceil(remainingMs / 86_400_000);
+  const units = [
+    { label: "meses", value: (duration.years ?? 0) * 12 + (duration.months ?? 0) },
+    { label: "dias", value: duration.days ?? 0 },
+    { label: "horas", value: duration.hours ?? 0 },
+    { label: "minutos", value: duration.minutes ?? 0 },
+    { label: "segundos", value: duration.seconds ?? 0 },
+  ];
+  const countdownLabel = remainingMs === null
+    ? "Calculando o tempo restante até o embarque"
+    : hasStarted
+      ? "A viagem começou"
+      : `Faltam ${totalDays} dias para o embarque: ${units.map((unit) => `${unit.value} ${unit.label}`).join(", ")}`;
+
+  return (
+    <section className={`trip-countdown${hasStarted ? " trip-countdown-complete" : ""}`} aria-label="Contagem regressiva para a viagem">
+      <div className="trip-countdown-copy">
+        <div className="trip-countdown-kicker"><i className="ti ti-plane-departure" /> Contagem regressiva</div>
+        <h2>{hasStarted ? "A viagem começou" : totalDays === null ? "Preparando a contagem" : `${totalDays} dias para a China`}</h2>
+        <div className="trip-countdown-date">
+          <i className="ti ti-calendar-event" />
+          Embarque em <time dateTime="2026-10-28">28 de outubro de 2026</time>
+        </div>
+      </div>
+
+      <div className="trip-countdown-timer" role="timer" aria-label={countdownLabel} aria-live="off">
+        {units.map((unit) => (
+          <div className="trip-countdown-unit" key={unit.label}>
+            <strong>{remainingMs === null ? "--" : String(unit.value).padStart(2, "0")}</strong>
+            <span>{unit.label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="trip-countdown-live"><i className="ti ti-clock-hour-4" /> Ao vivo</div>
+    </section>
+  );
+}
+
+function Metric({ icon, label, value, sub }: { icon: string; label: string; value: string; sub: string }) {
   return (
     <div className="metric-card">
       <div className="metric-label"><i className={`ti ${icon}`} />{label}</div>
@@ -94,9 +182,15 @@ function Metric({ icon, label, value, sub }: any) {
 
 function TouchpointGrid({ onViewParticipant }: { onViewParticipant?: (id: string) => void }) {
   const { data: allParts = [] } = useParticipants();
+  const { data: parcelas = [] } = useParcelasPagamento();
   const { data: tps = [] } = useTouchpoints();
   const upsert = useUpsertTouchpoint();
-  const parts = allParts.filter((p) => p.pagamento_status === "confirmado" && p.contrato_status === "assinado");
+  const parts = allParts.filter((participant) => {
+    const participantParcelas = parcelas.filter((parcela) => parcela.participant_id === participant.id);
+    return participant.contrato_status === "assinado"
+      && participantParcelas.length > 0
+      && participantParcelas.every((parcela) => parcela.paga);
+  });
   const getStatus = (pid: string, code: string) => tps.find((t) => t.participant_id === pid && t.touchpoint_code === code)?.status ?? "nao_iniciado";
   const handleClick = (pid: string, code: string, st: string, state: TpState) => {
     if (state === "future") return;
@@ -172,7 +266,13 @@ function Legend({ cls, label }: { cls: string; label: string }) {
 
 function PartsCompactList({ onViewParticipant }: { onViewParticipant?: (id: string) => void }) {
   const { data: allParts = [] } = useParticipants();
-  const parts = allParts.filter((p) => p.pagamento_status === "confirmado" && p.contrato_status === "assinado");
+  const { data: parcelas = [] } = useParcelasPagamento();
+  const parts = allParts.filter((participant) => {
+    const participantParcelas = parcelas.filter((parcela) => parcela.participant_id === participant.id);
+    return participant.contrato_status === "assinado"
+      && participantParcelas.length > 0
+      && participantParcelas.every((parcela) => parcela.paga);
+  });
   return (
     <div className="main">
       <div className="section-label" style={{ marginTop: 0 }}>Participantes confirmados — dados relevantes para o pré-operacional</div>
