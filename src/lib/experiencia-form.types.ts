@@ -25,15 +25,13 @@ export type ExperienciaIdentificacao = {
   data_nascimento?: string;
   telefone?: string;
   email?: string;
-  idiomas?: string[];
-  idiomas_outro?: string;
+  idiomas?: string;
 };
 
 export type ExperienciaHistoriaObjetivos = {
   motivacao?: string;
   transformacao_esperada?: string;
-  temas_interesse?: string[];
-  temas_interesse_outro?: string;
+  temas_interesse?: string;
   aprendizado_unico?: string;
   desafio_profissional?: string;
   empresa_conversa_aprofundada?: string;
@@ -49,37 +47,31 @@ export type ExperienciaCuidados = {
 };
 
 export type ExperienciaPreferencias = {
-  gosta_muito?: string[];
-  gosta_muito_outro?: string;
-  prefere_evitar?: string[];
-  prefere_evitar_outro?: string;
-  momentos_livres?: "reservada" | "sociavel" | "depende";
+  gosta_muito?: string;
+  prefere_evitar?: string;
+  momentos_livres?: string;
 };
 
 export type ExperienciaGastronomia = {
-  restricao_alimentar?: "sim" | "nao";
-  restricao_alimentar_qual?: string;
-  alergia_alimentar?: "sim" | "nao";
-  alergia_alimentar_qual?: string;
+  restricao_alimentar?: string;
+  alergia_alimentar?: string;
   alimento_evita?: string;
   alimento_religioso_cultural?: string;
-  comidas_interesse?: string[];
-  comidas_interesse_outro?: string;
+  comidas_interesse?: string;
   experiencia_gastronomica_especifica?: string;
 };
 
 export type ExperienciaPreparacaoViagem = {
-  cotacao_seguro?: "sim" | "ainda_nao" | "apoio_equipe";
-  contratou_seguro?: "sim" | "nao";
-  cotacao_passagem?: "sim" | "ainda_nao" | "apoio_equipe";
-  passagem_emitida?: "sim" | "nao";
+  cotacao_seguro?: string;
+  contratou_seguro?: string;
+  cotacao_passagem?: string;
+  passagem_emitida?: string;
   passaporte_validade?: string;
-  itinerario_retorno?: "definido" | "apoio_equipe";
-  companhia_viagem?: "sozinho" | "acompanhante_negocio" | "acompanhante_social";
-  tamanho_camisa?: "PP" | "P" | "M" | "G" | "GG" | "XG";
-  preocupacao_reconhecimento_facial?: "sem_preocupacao" | "checkin_tradicional" | "quero_saber_mais";
-  autorizacao_uso_imagem?: "autorizo" | "autorizo_com_restricoes" | "nao_autorizo";
-  autorizacao_uso_imagem_detalhe?: string;
+  itinerario_retorno?: string;
+  companhia_viagem?: string;
+  tamanho_camisa?: string;
+  preocupacao_reconhecimento_facial?: string;
+  autorizacao_uso_imagem?: string;
 };
 
 export type ExperienciaNetworking = {

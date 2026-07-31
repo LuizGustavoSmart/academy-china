@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParticipants, useParticipantResponse, useUpsertParticipantResponseSection } from "@/lib/hub-api";
 import { SECTIONS, emptyParticipantResponseDefaults, type SectionKey, type SecaoStatus, type SecoesConcluidas } from "@/lib/experiencia-form.types";
-import { ShortTextField, LongTextField, SingleChoiceField, MultiChoiceField, DateField } from "@/components/hub/experiencia/fields";
+import { ShortTextField, LongTextField, DateField } from "@/components/hub/experiencia/fields";
 
 const REQUIRED_SECTIONS: SectionKey[] = SECTIONS.filter((s) => s.camposObrigatorios.length > 0).map((s) => s.key);
 const PASSAPORTE_VALIDADE_MIN = "2026-11-09";
@@ -104,22 +104,7 @@ function SectionFields({ section, draft, setDraft }: { section: SectionKey; draf
           <DateField numero="06" label="Data de nascimento" value={draft.data_nascimento ?? ""} onChange={set("data_nascimento")} />
           <ShortTextField numero="07" label="Telefone" required type="tel" value={draft.telefone ?? ""} onChange={set("telefone")} />
           <ShortTextField numero="08" label="E-mail" required type="email" value={draft.email ?? ""} onChange={set("email")} />
-          <MultiChoiceField
-            numero="09"
-            label="Em quais idiomas, além do português, você se comunica com fluência?"
-            value={draft.idiomas ?? []}
-            onChange={set("idiomas")}
-            outro
-            outroValue={draft.idiomas_outro ?? ""}
-            onOutroChange={set("idiomas_outro")}
-            options={[
-              { value: "portugues_nativo", label: "Português (nativo)" },
-              { value: "ingles", label: "Inglês" },
-              { value: "mandarim", label: "Mandarim" },
-              { value: "espanhol", label: "Espanhol" },
-              { value: "outro", label: "Outro" },
-            ]}
-          />
+          <ShortTextField numero="09" label="Em quais idiomas, além do português, você se comunica com fluência?" value={draft.idiomas ?? ""} onChange={set("idiomas")} />
           <div className="exp-field-note">Todos os campos serão tratados com confidencialidade.</div>
         </>
       );
@@ -129,26 +114,7 @@ function SectionFields({ section, draft, setDraft }: { section: SectionKey; draf
         <>
           <LongTextField numero="01" label="O que motivou sua decisão de participar da Imersão China 2026?" value={draft.motivacao ?? ""} onChange={set("motivacao")} />
           <LongTextField numero="02" label="Qual é a principal transformação ou resultado que você espera obter ao final desta experiência?" value={draft.transformacao_esperada ?? ""} onChange={set("transformacao_esperada")} />
-          <MultiChoiceField
-            numero="03"
-            label="Existe algum tema específico que você gostaria de aprofundar durante a imersão?"
-            value={draft.temas_interesse ?? []}
-            onChange={set("temas_interesse")}
-            outro
-            outroValue={draft.temas_interesse_outro ?? ""}
-            onOutroChange={set("temas_interesse_outro")}
-            options={[
-              { value: "ia", label: "IA" },
-              { value: "industria_manufatura", label: "Indústria e manufatura" },
-              { value: "varejo_consumo", label: "Varejo e consumo" },
-              { value: "mobilidade", label: "Mobilidade" },
-              { value: "smart_cities", label: "Smart Cities" },
-              { value: "educacao", label: "Educação" },
-              { value: "saude", label: "Saúde" },
-              { value: "sustentabilidade", label: "Sustentabilidade" },
-              { value: "outro", label: "Outro" },
-            ]}
-          />
+          <LongTextField numero="03" label="Existe algum tema específico que você gostaria de aprofundar durante a imersão?" value={draft.temas_interesse ?? ""} onChange={set("temas_interesse")} />
           <LongTextField numero="04" label="Se pudesse voltar ao Brasil com apenas um grande aprendizado desta jornada, qual gostaria que fosse?" value={draft.aprendizado_unico ?? ""} onChange={set("aprendizado_unico")} />
           <LongTextField numero="05" label="Existe algum desafio profissional atual que você espera solucionar ou evoluir a partir das referências e aprendizados da China?" value={draft.desafio_profissional ?? ""} onChange={set("desafio_profissional")} />
           <LongTextField
@@ -178,90 +144,23 @@ function SectionFields({ section, draft, setDraft }: { section: SectionKey; draf
         </>
       );
 
-    case "preferencias": {
-      const gostoOptions = [
-        { value: "gastronomia", label: "Gastronomia" },
-        { value: "historia_cultura", label: "História e cultura" },
-        { value: "tecnologia_inovacao", label: "Tecnologia e inovação" },
-        { value: "compras", label: "Compras" },
-        { value: "networking", label: "Networking" },
-        { value: "experiencias_locais", label: "Experiências locais" },
-        { value: "arquitetura", label: "Arquitetura" },
-        { value: "outro", label: "Outro" },
-      ];
+    case "preferencias":
       return (
         <>
-          <MultiChoiceField
-            numero="01"
-            label="Cite três coisas que você gosta muito (em viagens)"
-            value={draft.gosta_muito ?? []}
-            onChange={set("gosta_muito")}
-            options={gostoOptions}
-            max={3}
-            outro
-            outroValue={draft.gosta_muito_outro ?? ""}
-            onOutroChange={set("gosta_muito_outro")}
-          />
-          <MultiChoiceField
-            numero="02"
-            label="Cite três coisas que você prefere evitar ou que não aprecia"
-            value={draft.prefere_evitar ?? []}
-            onChange={set("prefere_evitar")}
-            options={gostoOptions}
-            max={3}
-            outro
-            outroValue={draft.prefere_evitar_outro ?? ""}
-            onOutroChange={set("prefere_evitar_outro")}
-          />
-          <SingleChoiceField
-            numero="03"
-            label="Como você prefere aproveitar momentos livres durante viagens?"
-            value={draft.momentos_livres ?? ""}
-            onChange={set("momentos_livres")}
-            options={[
-              { value: "reservada", label: "Mais reservada" },
-              { value: "sociavel", label: "Mais sociável" },
-              { value: "depende", label: "Depende do contexto" },
-            ]}
-          />
+          <LongTextField numero="01" label="Cite três coisas que você gosta muito (em viagens)" value={draft.gosta_muito ?? ""} onChange={set("gosta_muito")} />
+          <LongTextField numero="02" label="Cite três coisas que você prefere evitar ou que não aprecia" value={draft.prefere_evitar ?? ""} onChange={set("prefere_evitar")} />
+          <ShortTextField numero="03" label="Como você prefere aproveitar momentos livres durante viagens?" value={draft.momentos_livres ?? ""} onChange={set("momentos_livres")} />
         </>
       );
-    }
 
     case "gastronomia":
       return (
         <>
-          <SingleChoiceField numero="01" label="Você possui alguma restrição alimentar?" value={draft.restricao_alimentar ?? ""} onChange={set("restricao_alimentar")} options={[{ value: "nao", label: "Não" }, { value: "sim", label: "Sim" }]} />
-          {draft.restricao_alimentar === "sim" && (
-            <ShortTextField numero="" label="Qual?" value={draft.restricao_alimentar_qual ?? ""} onChange={set("restricao_alimentar_qual")} />
-          )}
-          <SingleChoiceField numero="02" label="Possui alguma alergia alimentar?" value={draft.alergia_alimentar ?? ""} onChange={set("alergia_alimentar")} options={[{ value: "nao", label: "Não" }, { value: "sim", label: "Sim" }]} />
-          {draft.alergia_alimentar === "sim" && (
-            <ShortTextField numero="" label="Qual?" value={draft.alergia_alimentar_qual ?? ""} onChange={set("alergia_alimentar_qual")} />
-          )}
+          <ShortTextField numero="01" label="Você possui alguma restrição alimentar? Se sim, qual?" value={draft.restricao_alimentar ?? ""} onChange={set("restricao_alimentar")} />
+          <ShortTextField numero="02" label="Possui alguma alergia alimentar? Se sim, qual?" value={draft.alergia_alimentar ?? ""} onChange={set("alergia_alimentar")} />
           <ShortTextField numero="03" label="Existe algum alimento que você evita consumir?" value={draft.alimento_evita ?? ""} onChange={set("alimento_evita")} />
           <LongTextField numero="04" label="Existe algum alimento que consome por motivos religiosos, culturais ou pessoais e que devemos respeitar?" value={draft.alimento_religioso_cultural ?? ""} onChange={set("alimento_religioso_cultural")} />
-          <MultiChoiceField
-            numero="—"
-            label="Quais comidas típicas chinesas você teria interesse em experimentar?"
-            value={draft.comidas_interesse ?? []}
-            onChange={set("comidas_interesse")}
-            outro
-            outroValue={draft.comidas_interesse_outro ?? ""}
-            onOutroChange={set("comidas_interesse_outro")}
-            options={[
-              { value: "pato_pequim", label: "Pato de Pequim" },
-              { value: "dumplings", label: "Dumplings" },
-              { value: "hot_pot", label: "Hot Pot" },
-              { value: "baozi", label: "Baozi" },
-              { value: "noodles", label: "Noodles tradicionais" },
-              { value: "frutos_do_mar", label: "Frutos do mar locais" },
-              { value: "street_food", label: "Street food chinesa" },
-              { value: "todas", label: "Todas as opções" },
-              { value: "ocidentais", label: "Prefiro opções ocidentais" },
-              { value: "outro", label: "Outro" },
-            ]}
-          />
+          <LongTextField numero="—" label="Quais comidas típicas chinesas você teria interesse em experimentar?" value={draft.comidas_interesse ?? ""} onChange={set("comidas_interesse")} />
           <LongTextField numero="—" label="Existe alguma experiência gastronômica específica que gostaria de viver na China?" value={draft.experiencia_gastronomica_especifica ?? ""} onChange={set("experiencia_gastronomica_especifica")} />
         </>
       );
@@ -274,37 +173,32 @@ function SectionFields({ section, draft, setDraft }: { section: SectionKey; draf
       return (
         <>
           <div className="section-label">Seguro e passagem</div>
-          <SingleChoiceField numero="" label="Já realizou a cotação do seguro viagem?" value={draft.cotacao_seguro ?? ""} onChange={set("cotacao_seguro")} options={[{ value: "sim", label: "Sim" }, { value: "ainda_nao", label: "Ainda não" }, { value: "apoio_equipe", label: "Apoio da equipe" }]} />
-          <SingleChoiceField numero="" label="Já contratou o seguro viagem?" value={draft.contratou_seguro ?? ""} onChange={set("contratou_seguro")} options={[{ value: "sim", label: "Sim" }, { value: "nao", label: "Não" }]} />
-          <SingleChoiceField numero="" label="Já realizou a cotação da passagem aérea?" value={draft.cotacao_passagem ?? ""} onChange={set("cotacao_passagem")} options={[{ value: "sim", label: "Sim" }, { value: "ainda_nao", label: "Ainda não" }, { value: "apoio_equipe", label: "Apoio da equipe" }]} />
-          <SingleChoiceField numero="" label="Sua passagem aérea já foi emitida?" value={draft.passagem_emitida ?? ""} onChange={set("passagem_emitida")} options={[{ value: "sim", label: "Sim" }, { value: "nao", label: "Não" }]} />
+          <ShortTextField numero="" label="Já realizou a cotação do seguro viagem?" value={draft.cotacao_seguro ?? ""} onChange={set("cotacao_seguro")} />
+          <ShortTextField numero="" label="Já contratou o seguro viagem?" value={draft.contratou_seguro ?? ""} onChange={set("contratou_seguro")} />
+          <ShortTextField numero="" label="Já realizou a cotação da passagem aérea?" value={draft.cotacao_passagem ?? ""} onChange={set("cotacao_passagem")} />
+          <ShortTextField numero="" label="Sua passagem aérea já foi emitida?" value={draft.passagem_emitida ?? ""} onChange={set("passagem_emitida")} />
 
           <div className="section-label">Documentação</div>
           <DateField numero="" label="Qual a data de validade do seu passaporte?" value={validade} onChange={set("passaporte_validade")} min={PASSAPORTE_VALIDADE_MIN} alert={alert} />
-          <SingleChoiceField numero="" label="Já possui itinerário definido para o trecho de retorno (via Dubai)?" value={draft.itinerario_retorno ?? ""} onChange={set("itinerario_retorno")} options={[{ value: "definido", label: "Sim, já defini" }, { value: "apoio_equipe", label: "Depende do apoio da equipe" }]} />
+          <ShortTextField numero="" label="Já possui itinerário definido para o trecho de retorno (via Dubai)?" value={draft.itinerario_retorno ?? ""} onChange={set("itinerario_retorno")} />
 
           <div className="section-label">Logística pessoal</div>
-          <SingleChoiceField numero="" label="Você viajará sozinho(a) ou com acompanhante?" value={draft.companhia_viagem ?? ""} onChange={set("companhia_viagem")} options={[{ value: "sozinho", label: "Sozinho(a)" }, { value: "acompanhante_negocio", label: "Com acompanhante (nas atividades de negócio)" }, { value: "acompanhante_social", label: "Com acompanhante (só no programa social)" }]} />
-          <SingleChoiceField numero="" label="Camisa tamanho" value={draft.tamanho_camisa ?? ""} onChange={set("tamanho_camisa")} options={["PP", "P", "M", "G", "GG", "XG"].map((v) => ({ value: v, label: v }))} />
+          <ShortTextField numero="" label="Você viajará sozinho(a) ou com acompanhante?" value={draft.companhia_viagem ?? ""} onChange={set("companhia_viagem")} />
+          <ShortTextField numero="" label="Camisa tamanho" value={draft.tamanho_camisa ?? ""} onChange={set("tamanho_camisa")} />
 
           <div className="section-label">Imagem, tecnologia e conteúdo</div>
-          <SingleChoiceField
+          <LongTextField
             numero=""
             label="O hotel em Hangzhou (Fly Zoo) usa reconhecimento facial para check-in e outras tecnologias de IA no serviço. Você tem alguma preocupação ou preferência sobre isso?"
             value={draft.preocupacao_reconhecimento_facial ?? ""}
             onChange={set("preocupacao_reconhecimento_facial")}
-            options={[{ value: "sem_preocupacao", label: "Sem preocupação" }, { value: "checkin_tradicional", label: "Prefiro check-in tradicional" }, { value: "quero_saber_mais", label: "Quero saber mais antes" }]}
           />
-          <SingleChoiceField
+          <LongTextField
             numero=""
-            label="Autoriza o uso de fotos e vídeos seus, feitos durante a imersão, em materiais de marketing da Academy China?"
+            label="Autoriza o uso de fotos e vídeos seus, feitos durante a imersão, em materiais de marketing da Academy China? Se houver restrições, detalhe."
             value={draft.autorizacao_uso_imagem ?? ""}
             onChange={set("autorizacao_uso_imagem")}
-            options={[{ value: "autorizo", label: "Sim, autorizo" }, { value: "autorizo_com_restricoes", label: "Sim, com restrições" }, { value: "nao_autorizo", label: "Não autorizo" }]}
           />
-          {draft.autorizacao_uso_imagem === "autorizo_com_restricoes" && (
-            <LongTextField numero="" label="Detalhe as restrições" value={draft.autorizacao_uso_imagem_detalhe ?? ""} onChange={set("autorizacao_uso_imagem_detalhe")} />
-          )}
 
           <div className="nota-estrategica">
             Hoje, brasileiros podem permanecer até 30 dias na China sem necessidade de visto. Emolumentos só se aplicam caso a regra mude até a data da missão.
