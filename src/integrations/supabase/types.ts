@@ -419,6 +419,71 @@ export type Database = {
           },
         ]
       }
+      participant_responses: {
+        Row: {
+          contato_emergencia: Json
+          created_at: string
+          cuidados: Json
+          gastronomia: Json
+          historia_objetivos: Json
+          id: string
+          identificacao: Json
+          indicacoes: Json
+          networking: Json
+          participant_id: string
+          preferencias: Json
+          preparacao_viagem: Json
+          secoes_concluidas: Json
+          status: string
+          ultima_pergunta: Json
+          updated_at: string
+        }
+        Insert: {
+          contato_emergencia?: Json
+          created_at?: string
+          cuidados?: Json
+          gastronomia?: Json
+          historia_objetivos?: Json
+          id?: string
+          identificacao?: Json
+          indicacoes?: Json
+          networking?: Json
+          participant_id: string
+          preferencias?: Json
+          preparacao_viagem?: Json
+          secoes_concluidas?: Json
+          status?: string
+          ultima_pergunta?: Json
+          updated_at?: string
+        }
+        Update: {
+          contato_emergencia?: Json
+          created_at?: string
+          cuidados?: Json
+          gastronomia?: Json
+          historia_objetivos?: Json
+          id?: string
+          identificacao?: Json
+          indicacoes?: Json
+          networking?: Json
+          participant_id?: string
+          preferencias?: Json
+          preparacao_viagem?: Json
+          secoes_concluidas?: Json
+          status?: string
+          ultima_pergunta?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participant_responses_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: true
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       participants: {
         Row: {
           alergias: string | null
