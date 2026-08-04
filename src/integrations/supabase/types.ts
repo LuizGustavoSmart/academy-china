@@ -351,6 +351,7 @@ export type Database = {
           participant_id: string
           updated_at: string
           valor: number
+          valor_manual: boolean
         }
         Insert: {
           created_at?: string
@@ -362,6 +363,7 @@ export type Database = {
           participant_id: string
           updated_at?: string
           valor?: number
+          valor_manual?: boolean
         }
         Update: {
           created_at?: string
@@ -373,6 +375,7 @@ export type Database = {
           participant_id?: string
           updated_at?: string
           valor?: number
+          valor_manual?: boolean
         }
         Relationships: [
           {
@@ -742,6 +745,10 @@ export type Database = {
     Functions: {
       replace_lead_responsaveis: {
         Args: { p_lead_id: string; p_responsavel_ids: string[] }
+        Returns: undefined
+      }
+      update_parcela_valor: {
+        Args: { p_parcela_id: string; p_valor: number }
         Returns: undefined
       }
     }
