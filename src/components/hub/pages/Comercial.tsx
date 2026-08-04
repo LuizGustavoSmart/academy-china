@@ -254,7 +254,12 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
                     <i className="ti ti-chevron-down" />
                   </button>
                 </td>
-                <td><button className="btn-secondary" style={{ padding: "4px 10px", fontSize: 11 }} onClick={() => onOpenLead(l.id)}><i className="ti ti-pencil" /></button></td>
+                <td>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button className="btn-secondary" style={{ padding: "4px 10px", fontSize: 11 }} title="Editar lead" aria-label={`Editar ${l.nome}`} onClick={() => onOpenLead(l.id)}><i className="ti ti-pencil" /></button>
+                    <DeclineRowButton lead={l} />
+                  </div>
+                </td>
               </tr>
             ))}
             {showOrphans && orphanRows.map((p) => (
@@ -282,6 +287,54 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
 }
 
 /** Etapa do funil editável direto na linha da tabela — sem precisar abrir o detalhamento. */
+/** Declinar (ou reativar) o lead direto da linha da lista, ao lado do editar. */
+function DeclineRowButton({ lead }: { lead: Lead }) {
+  const update = useUpdateLead();
+  const addActivity = useCreateLeadActivity();
+  const [confirm, setConfirm] = useState(false);
+  const declined = isDeclined(lead);
+
+  const apply = () => {
+    update.mutate(
+      { id: lead.id, patch: declined ? { status: "abordado" } : { status: "declinado" } },
+      {
+        onSuccess: () => addActivity.mutate({
+          lead_id: lead.id,
+          conteudo: declined
+            ? `Lead reativado em ${passoLabel(lead.passo)}.`
+            : `Lead declinado em ${passoLabel(lead.passo)}.`,
+          autor: "Sistema",
+          tipo: "status",
+        }),
+      },
+    );
+  };
+
+  return (
+    <>
+      <button
+        className="btn-secondary"
+        style={{ padding: "4px 10px", fontSize: 11, color: declined ? "var(--ok, #15803d)" : "var(--danger, #b42318)" }}
+        title={declined ? "Reativar lead" : "Declinar lead"}
+        aria-label={declined ? `Reativar ${lead.nome}` : `Declinar ${lead.nome}`}
+        disabled={update.isPending}
+        onClick={() => (declined ? apply() : setConfirm(true))}
+      >
+        <i className={`ti ${declined ? "ti-user-check" : "ti-user-x"}`} />
+      </button>
+      <ConfirmDialog
+        open={confirm}
+        onClose={() => setConfirm(false)}
+        onConfirm={apply}
+        title="Declinar este lead?"
+        message={`${lead.nome} sairá da lista de ativos e irá para a coluna “Declinado” do pipeline. A etapa ${passoLabel(lead.passo)} será preservada para uma possível reativação.`}
+        confirmLabel="Sim, declinar"
+        icon="ti-user-x"
+      />
+    </>
+  );
+}
+
 function PassoInlineSelect({ lead }: { lead: Lead }) {
   const update = useUpdateLead();
   const [open, setOpen] = useState(false);
