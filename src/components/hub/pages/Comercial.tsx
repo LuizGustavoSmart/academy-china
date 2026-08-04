@@ -287,10 +287,6 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
 }
 
 /** Etapa do funil editável direto na linha da tabela — sem precisar abrir o detalhamento. */
-function PassoInlineSelect({ lead }: { lead: Lead }) {
-  return <PassoInlineSelectInner lead={lead} />;
-}
-
 /** Declinar (ou reativar) o lead direto da linha da lista, ao lado do editar. */
 function DeclineRowButton({ lead }: { lead: Lead }) {
   const update = useUpdateLead();
@@ -339,7 +335,7 @@ function DeclineRowButton({ lead }: { lead: Lead }) {
   );
 }
 
-function PassoInlineSelectInner({ lead }: { lead: Lead }) {
+function PassoInlineSelect({ lead }: { lead: Lead }) {
   const update = useUpdateLead();
   const [open, setOpen] = useState(false);
   const currentStage = pipelineStage(lead.passo);
