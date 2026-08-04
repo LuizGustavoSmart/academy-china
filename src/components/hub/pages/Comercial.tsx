@@ -254,7 +254,12 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
                     <i className="ti ti-chevron-down" />
                   </button>
                 </td>
-                <td><button className="btn-secondary" style={{ padding: "4px 10px", fontSize: 11 }} onClick={() => onOpenLead(l.id)}><i className="ti ti-pencil" /></button></td>
+                <td>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button className="btn-secondary" style={{ padding: "4px 10px", fontSize: 11 }} title="Editar lead" aria-label={`Editar ${l.nome}`} onClick={() => onOpenLead(l.id)}><i className="ti ti-pencil" /></button>
+                    <DeclineRowButton lead={l} />
+                  </div>
+                </td>
               </tr>
             ))}
             {showOrphans && orphanRows.map((p) => (
