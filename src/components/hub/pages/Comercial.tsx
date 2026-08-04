@@ -288,6 +288,58 @@ function LeadsTab({ onOpenLead, onViewParticipant }: { onOpenLead: (id: string) 
 
 /** Etapa do funil editável direto na linha da tabela — sem precisar abrir o detalhamento. */
 function PassoInlineSelect({ lead }: { lead: Lead }) {
+  return <PassoInlineSelectInner lead={lead} />;
+}
+
+/** Declinar (ou reativar) o lead direto da linha da lista, ao lado do editar. */
+function DeclineRowButton({ lead }: { lead: Lead }) {
+  const update = useUpdateLead();
+  const addActivity = useCreateLeadActivity();
+  const [confirm, setConfirm] = useState(false);
+  const declined = isDeclined(lead);
+
+  const apply = () => {
+    update.mutate(
+      { id: lead.id, patch: declined ? { status: "abordado" } : { status: "declinado" } },
+      {
+        onSuccess: () => addActivity.mutate({
+          lead_id: lead.id,
+          conteudo: declined
+            ? `Lead reativado em ${passoLabel(lead.passo)}.`
+            : `Lead declinado em ${passoLabel(lead.passo)}.`,
+          autor: "Sistema",
+          tipo: "status",
+        }),
+      },
+    );
+  };
+
+  return (
+    <>
+      <button
+        className="btn-secondary"
+        style={{ padding: "4px 10px", fontSize: 11, color: declined ? "var(--ok, #15803d)" : "var(--danger, #b42318)" }}
+        title={declined ? "Reativar lead" : "Declinar lead"}
+        aria-label={declined ? `Reativar ${lead.nome}` : `Declinar ${lead.nome}`}
+        disabled={update.isPending}
+        onClick={() => (declined ? apply() : setConfirm(true))}
+      >
+        <i className={`ti ${declined ? "ti-user-check" : "ti-user-x"}`} />
+      </button>
+      <ConfirmDialog
+        open={confirm}
+        onClose={() => setConfirm(false)}
+        onConfirm={apply}
+        title="Declinar este lead?"
+        message={`${lead.nome} sairá da lista de ativos e irá para a coluna “Declinado” do pipeline. A etapa ${passoLabel(lead.passo)} será preservada para uma possível reativação.`}
+        confirmLabel="Sim, declinar"
+        icon="ti-user-x"
+      />
+    </>
+  );
+}
+
+function PassoInlineSelectInner({ lead }: { lead: Lead }) {
   const update = useUpdateLead();
   const [open, setOpen] = useState(false);
   const currentStage = pipelineStage(lead.passo);
