@@ -1,13 +1,16 @@
-// Envia o e-mail de transição de etapa do pipeline de Pré-Viagem via Resend e
-// registra o resultado (sucesso ou erro) em `email_send_history`. A mensagem
-// já chega pronta (assunto/conteúdo com os placeholders já resolvidos pelo
-// front-end) — esta função só confirma o envio e persiste o histórico.
+// Envia o e-mail de transição de etapa do pipeline de Pré-Viagem via Resend,
+// agora usando o gateway de conectores Lovable. Registra o resultado (sucesso
+// ou erro) em `email_send_history`. A mensagem já chega pronta
+// (assunto/conteúdo com os placeholders já resolvidos pelo front-end) — esta
+// function só confirma o envio e persiste o histórico.
 // verify_jwt = false em supabase/config.toml porque quem chama é o próprio
 // app do Hub usando a chave publishable, sem sessão de usuário autenticado.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const FROM_EMAIL = Deno.env.get("EMAIL_FROM") ?? "Academy China <onboarding@resend.dev>";
+const FROM_EMAIL = Deno.env.get("EMAIL_FROM") ?? "Academy China <matteracademy@matterco.com.br>";
+const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend/emails";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -53,20 +56,21 @@ Deno.serve(async (req) => {
     enviado_por: body.enviado_por ?? null,
   };
 
-  if (!RESEND_API_KEY) {
+  if (!LOVABLE_API_KEY || !RESEND_API_KEY) {
     await admin.from("email_send_history").insert({
       ...historyBase,
       status_envio: "erro",
-      erro_envio: "RESEND_API_KEY não configurada nas secrets do projeto Supabase.",
+      erro_envio: "LOVABLE_API_KEY ou RESEND_API_KEY não configuradas nas secrets do projeto.",
     });
     return json({ status: "erro", erro: "email_provider_not_configured" }, 500);
   }
 
   try {
-    const res = await fetch("https://api.resend.com/emails", {
+    const res = await fetch(GATEWAY_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "X-Connection-Api-Key": RESEND_API_KEY,
         "content-type": "application/json",
       },
       body: JSON.stringify({
