@@ -900,18 +900,11 @@ export function useUpdateParcelaPagamento() {
       if (id.startsWith("local:")) {
         const overrides = readLocalParcelas();
         if (patch.valor !== undefined) {
-          const next = redistributeEditedParcela(
-            cachedParticipantParcelas(id),
-            id,
-            patch.valor,
-          );
-          for (const parcela of next) {
-            overrides[parcela.id] = {
-              ...overrides[parcela.id],
-              valor: parcela.valor,
-              valor_manual: parcela.valor_manual,
-            };
-          }
+          overrides[id] = {
+            ...overrides[id],
+            valor: patch.valor,
+            valor_manual: true,
+          };
         } else {
           const current = overrides[id] ?? {};
           overrides[id] = {
@@ -926,27 +919,12 @@ export function useUpdateParcelaPagamento() {
         return;
       }
       if (patch.valor !== undefined) {
-        const rpc = await sb.rpc("update_parcela_valor", {
-          p_parcela_id: id,
-          p_valor: patch.valor,
-        });
-        if (!rpc.error) return;
-
-        // Compatibilidade temporária enquanto a nova migration ainda não foi
-        // aplicada: redistribui no cliente e persiste somente os valores.
-        const next = redistributeEditedParcela(
-          cachedParticipantParcelas(id),
-          id,
-          patch.valor,
-        );
-        const updates = await Promise.all(next.map((parcela) =>
-          sb
-            .from("parcelas_pagamento")
-            .update({ valor: parcela.valor, updated_at: new Date().toISOString() })
-            .eq("id", parcela.id),
-        ));
-        const failed = updates.find((result) => result.error);
-        if (failed?.error) throw failed.error;
+        // Edição livre: grava apenas a parcela editada, sem redistribuir as demais.
+        const { error: valorError } = await sb
+          .from("parcelas_pagamento")
+          .update({ valor: patch.valor, valor_manual: true, updated_at: new Date().toISOString() })
+          .eq("id", id);
+        if (valorError) throw valorError;
         return;
       }
       const payload: Record<string, unknown> = {
