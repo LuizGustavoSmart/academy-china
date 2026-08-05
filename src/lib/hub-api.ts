@@ -837,17 +837,6 @@ export function useParcelasPagamento(participantId?: string) {
 
 export function useUpdateParcelaPagamento() {
   const qc = useQueryClient();
-  const cachedParticipantParcelas = (id: string) => {
-    const matches = qc
-      .getQueriesData<ParcelaPagamento[]>({ queryKey: ["hub_parcelas_pagamento"] })
-      .map(([, data]) => data ?? [])
-      .find((data) => data.some((parcela) => parcela.id === id)) ?? [];
-    const target = matches.find((parcela) => parcela.id === id);
-    return target
-      ? matches.filter((parcela) => parcela.participant_id === target.participant_id)
-      : [];
-  };
-
   return useMutation({
     mutationFn: async ({
       id,
