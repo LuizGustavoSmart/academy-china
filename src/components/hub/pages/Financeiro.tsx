@@ -296,13 +296,6 @@ function ParticipantFinanceModal({
                     onCommit={(value) => {
                       if (estruturaEmPrevia) return;
                       if (value === Number(parcela.valor)) return;
-                      const outras = parcelasExibidas
-                        .filter((item) => item.id !== parcela.id)
-                        .reduce((total, item) => total + Number(item.valor || 0), 0);
-                      if (Math.round((outras + value) * 100) > Math.round(form.valor_pago * 100)) {
-                        setError("A soma das parcelas ultrapassa o valor total do contrato.");
-                        return;
-                      }
                       setError(null);
                       updateParcela.mutate(
                         { id: parcela.id, patch: { valor: value } },
@@ -330,9 +323,10 @@ function ParticipantFinanceModal({
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, fontSize: 12 }}>
         <span style={{ color: "var(--text3)" }}>{pagas.length} de {parcelasExibidas.length} parcela(s) paga(s)</span>
         <span style={{ display: "flex", gap: 16 }}>
-          <span style={{ color: diferenca === 0 ? "var(--text3)" : "var(--accent)" }}>
+          <span style={{ color: diferenca < 0 ? "var(--danger)" : diferenca === 0 ? "var(--text3)" : "var(--accent)" }}>
             Soma das parcelas: {fmtBRL(somaParcelas)} / {fmtBRL(form.valor_pago)}
-            {diferenca !== 0 && ` (faltam ${fmtBRL(diferenca)})`}
+            {diferenca > 0 && ` (faltam ${fmtBRL(diferenca)})`}
+            {diferenca < 0 && ` (excede em ${fmtBRL(Math.abs(diferenca))})`}
           </span>
           <strong style={{ color: "var(--teal)" }}>Recebido: {fmtBRL(recebido)}</strong>
         </span>
