@@ -6,6 +6,7 @@ import {
 import {
   useParticipants, useTouchpoints, useUpsertTouchpoints, useUpdateParticipant,
   useEmailTemplates, usePipelineEmailAutomations, useSendStageEmail, resolvePlaceholders,
+  useCreateParticipantActivity,
   type Participant, type Touchpoint,
 } from "@/lib/hub-api";
 import { TPS, TP_NAMES, TP_DAYS, DEPARTURE_DATE, ETAPA_KEYS, etapaLabel, etapaCor, etapaIcone } from "@/lib/pre-viagem-etapas";
@@ -92,6 +93,7 @@ export function PreViagemKanban({ onViewParticipant }: { onViewParticipant?: (id
   const { data: automations = [] } = usePipelineEmailAutomations();
   const { data: templates = [] } = useEmailTemplates();
   const sendStageEmail = useSendStageEmail();
+  const createActivity = useCreateParticipantActivity();
   const [pendingEmail, setPendingEmail] = useState<PendingStageEmail | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
@@ -185,7 +187,19 @@ export function PreViagemKanban({ onViewParticipant }: { onViewParticipant?: (id
         conteudo: payload.conteudo,
       },
       {
-        onSuccess: () => setPendingEmail(null),
+        onSuccess: (res: any) => {
+          setPendingEmail(null);
+          // Registra o envio na timeline do participante, com a mensagem enviada.
+          createActivity.mutate({
+            participant_id: payload.participant_id,
+            tipo: res?.status === "erro" ? "erro" : "email",
+            conteudo:
+              `📧 E-mail ${res?.status === "erro" ? "NÃO enviado" : "enviado"} — etapa ${etapaLabel(payload.etapa_destino)}\n` +
+              `Para: ${payload.destinatario}\n` +
+              `Assunto: ${payload.assunto}\n\n` +
+              payload.conteudo.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+          });
+        },
         onError: (e: any) => alert("Falha ao enviar o e-mail: " + (e?.message ?? e) + "\n\nO card permanece na nova etapa. A tentativa foi registrada no histórico de envios."),
       },
     );
