@@ -56,6 +56,99 @@ export type Database = {
         }
         Relationships: []
       }
+      email_send_history: {
+        Row: {
+          assunto_enviado: string
+          conteudo_enviado: string
+          created_at: string
+          destinatario: string
+          email_template_id: string | null
+          enviado_em: string | null
+          enviado_por: string | null
+          erro_envio: string | null
+          etapa_destino: string
+          etapa_origem: string | null
+          id: string
+          participant_id: string | null
+          status_envio: string
+        }
+        Insert: {
+          assunto_enviado: string
+          conteudo_enviado: string
+          created_at?: string
+          destinatario: string
+          email_template_id?: string | null
+          enviado_em?: string | null
+          enviado_por?: string | null
+          erro_envio?: string | null
+          etapa_destino: string
+          etapa_origem?: string | null
+          id?: string
+          participant_id?: string | null
+          status_envio?: string
+        }
+        Update: {
+          assunto_enviado?: string
+          conteudo_enviado?: string
+          created_at?: string
+          destinatario?: string
+          email_template_id?: string | null
+          enviado_em?: string | null
+          enviado_por?: string | null
+          erro_envio?: string | null
+          etapa_destino?: string
+          etapa_origem?: string | null
+          id?: string
+          participant_id?: string | null
+          status_envio?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_send_history_email_template_id_fkey"
+            columns: ["email_template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_send_history_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_templates: {
+        Row: {
+          assunto: string
+          ativo: boolean
+          conteudo: string
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          assunto?: string
+          ativo?: boolean
+          conteudo?: string
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          assunto?: string
+          ativo?: boolean
+          conteudo?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       financeiro_config: {
         Row: {
           cambio: number
@@ -675,6 +768,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      pipeline_email_automations: {
+        Row: {
+          automacao_ativa: boolean
+          confirmacao_obrigatoria: boolean
+          created_at: string
+          email_template_id: string | null
+          etapa_key: string
+          id: string
+          pipeline_id: string
+          updated_at: string
+        }
+        Insert: {
+          automacao_ativa?: boolean
+          confirmacao_obrigatoria?: boolean
+          created_at?: string
+          email_template_id?: string | null
+          etapa_key: string
+          id?: string
+          pipeline_id?: string
+          updated_at?: string
+        }
+        Update: {
+          automacao_ativa?: boolean
+          confirmacao_obrigatoria?: boolean
+          created_at?: string
+          email_template_id?: string | null
+          etapa_key?: string
+          id?: string
+          pipeline_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_email_automations_email_template_id_fkey"
+            columns: ["email_template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       responsaveis: {
         Row: {
