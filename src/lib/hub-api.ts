@@ -958,6 +958,85 @@ export const custoValor = (c: Custo) => {
   return Number(c.valor_fixo || 0) + Number(c.valor_variavel || 0);
 };
 
+export type ResumoFinanceiro = {
+  /** Total pago por participante, somando as parcelas marcadas como pagas. */
+  recebidoPorParticipante: Map<string, number>;
+  /** Saldo em aberto por participante. Só existe para quem entra nos totais. */
+  aReceberPorParticipante: Map<string, number>;
+  /** Participantes que entram nos totais: assinaram ou já pagaram alguma parcela. */
+  entraNosTotais: (participantId: string) => boolean;
+  /** Soma do valor cheio apenas dos contratos assinados. */
+  totalContratosAssinados: number;
+  /** Dinheiro em caixa: todas as parcelas pagas, mesmo de contrato pendente. */
+  recebido: number;
+  /** Saldo a entrar de quem assinou ou já pagou algo. */
+  aReceber: number;
+  /** Parcelas pagas consideradas no recebido. */
+  parcelasPagas: ParcelaPagamento[];
+};
+
+/**
+ * Fonte única dos números financeiros — dashboard e tela Financeiro consomem
+ * daqui para nunca divergirem.
+ *
+ * Um participante entra nos totais quando existe compromisso real: contrato
+ * assinado OU pelo menos uma parcela paga. Assim um pagamento de contrato ainda
+ * pendente conta como dinheiro em caixa, mas quem nunca assinou nem pagou não
+ * infla o "a receber". O total de contratos fechados continua contando somente
+ * os assinados, por isso ele não fecha com recebido + a receber.
+ */
+export function resumoFinanceiro(
+  participants: Participant[],
+  parcelas: ParcelaPagamento[],
+): ResumoFinanceiro {
+  const porId = new Map(participants.map((participant) => [participant.id, participant]));
+  const recebidoPorParticipante = new Map<string, number>();
+  const parcelasPagas: ParcelaPagamento[] = [];
+
+  for (const parcela of parcelas) {
+    if (!parcela.paga || !porId.has(parcela.participant_id)) continue;
+    parcelasPagas.push(parcela);
+    recebidoPorParticipante.set(
+      parcela.participant_id,
+      (recebidoPorParticipante.get(parcela.participant_id) ?? 0) + Number(parcela.valor || 0),
+    );
+  }
+
+  const entra = (participant: Participant) =>
+    participant.contrato_status === "assinado"
+    || (recebidoPorParticipante.get(participant.id) ?? 0) > 0;
+
+  const aReceberPorParticipante = new Map<string, number>();
+  let totalContratosAssinados = 0;
+  let recebido = 0;
+  let aReceber = 0;
+
+  for (const participant of participants) {
+    if (participant.contrato_status === "assinado") {
+      totalContratosAssinados += Number(participant.valor_pago || 0);
+    }
+    if (!entra(participant)) continue;
+    const pago = recebidoPorParticipante.get(participant.id) ?? 0;
+    const saldo = Math.max(0, Number(participant.valor_pago || 0) - pago);
+    aReceberPorParticipante.set(participant.id, saldo);
+    recebido += pago;
+    aReceber += saldo;
+  }
+
+  return {
+    recebidoPorParticipante,
+    aReceberPorParticipante,
+    entraNosTotais: (participantId: string) => {
+      const participant = porId.get(participantId);
+      return participant ? entra(participant) : false;
+    },
+    totalContratosAssinados,
+    recebido,
+    aReceber,
+    parcelasPagas,
+  };
+}
+
 // ────────── MENSAGENS ──────────
 export function useMensagens(etapa: string) {
   return useQuery<Mensagem[]>({

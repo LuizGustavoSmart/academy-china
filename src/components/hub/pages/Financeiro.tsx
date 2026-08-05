@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   CATEGORIAS_CUSTO, categoriaLabel, custoValor, fmtBRL,
   useCreateCusto, useCustos, useDeleteCusto, useFinanceiroConfig,
+  resumoFinanceiro,
   useParcelasPagamento, useParticipants, useUpdateCusto, useUpdateFinanceiroConfig,
   useUpdateParcelaPagamento, useUpdateParticipant,
   type Custo, type ParcelaPagamento, type Participant,
@@ -23,32 +24,22 @@ export function FinanceiroPage() {
 
   const meta = fin.meta_vagas;
   const signed = participants.filter((p) => p.contrato_status === "assinado");
-  const signedIds = new Set(signed.map((p) => p.id));
-  const parcelasContrato = parcelas.filter((parcela) => signedIds.has(parcela.participant_id));
-  const parcelasPagas = parcelasContrato.filter((parcela) => parcela.paga);
-  const totalContratos = signed.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
-  const recebido = parcelasPagas.reduce((s, parcela) => s + Number(parcela.valor || 0), 0);
-  const aReceber = Math.max(0, totalContratos - recebido);
+  const resumo = resumoFinanceiro(participants, parcelas);
+  const { recebido, aReceber, parcelasPagas, recebidoPorParticipante } = resumo;
+  const totalContratos = resumo.totalContratosAssinados;
   const custoTotal = custos.reduce((s, c) => s + custoValor(c), 0);
   const margem = totalContratos > 0 ? ((totalContratos - custoTotal) / totalContratos) * 100 : 0;
   const localMode = parcelas.some((parcela) => parcela.local);
-  const recebidoPorParticipante = new Map<string, number>();
-  for (const parcela of parcelas.filter((item) => item.paga)) {
-    recebidoPorParticipante.set(
-      parcela.participant_id,
-      (recebidoPorParticipante.get(parcela.participant_id) ?? 0) + Number(parcela.valor || 0),
-    );
-  }
 
   return (
     <div className="main">
       <div className="metrics" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
         <Metric icon="ti-file-check" label="Valor total em contratos fechados" value={fmtBRL(totalContratos)} sub={`${signed.length} contrato(s) assinado(s)`} cls="metric-ok"
-          tooltip="Soma do valor cheio de todos os participantes com contrato assinado. É a receita total já contratada, independentemente de quanto já foi pago." />
+          tooltip="Soma do valor cheio apenas dos participantes com contrato ASSINADO, independentemente de quanto já foi pago. Atenção: este card não fecha com recebido + a receber, porque considera só os assinados — pagamentos de contratos ainda pendentes entram no recebido mas não aqui." />
         <Metric icon="ti-check" label="Valor recebido" value={fmtBRL(recebido)} sub={`${parcelasPagas.length} parcela(s) paga(s)`} cls="metric-ok"
-          tooltip="Soma de todas as parcelas marcadas como pagas nos contratos assinados. É o dinheiro efetivamente em caixa até agora." />
-        <Metric icon="ti-clock-dollar" label="Valor a receber" value={fmtBRL(aReceber)} sub="contratos fechados menos recebido"
-          tooltip="Saldo ainda a entrar: valor total em contratos fechados menos o valor já recebido. Cai a cada parcela paga e sobe quando um novo contrato é assinado." />
+          tooltip="Dinheiro efetivamente em caixa: todas as parcelas marcadas como pagas, inclusive de participantes cujo contrato ainda está pendente." />
+        <Metric icon="ti-clock-dollar" label="Valor a receber" value={fmtBRL(aReceber)} sub="saldo em aberto de quem assinou ou pagou"
+          tooltip="Saldo ainda a entrar, somando o que falta de cada participante que já assinou o contrato ou já pagou alguma parcela. Cai a cada parcela paga. Quem nunca assinou nem pagou não entra." />
         <Metric icon="ti-trending-down" label="Custos e despesas totais" value={fmtBRL(custoTotal)} sub={`câmbio adotado R$ ${fin.cambio.toFixed(2).replace(".", ",")}`} cls="metric-warn"
           tooltip="Soma de todos os custos cadastrados na estrutura de custos abaixo, já convertidos pelo câmbio adotado (R$/USD)." />
         <Metric
@@ -85,6 +76,8 @@ export function FinanceiroPage() {
             {participants.map((p) => {
               const participanteRecebido = recebidoPorParticipante.get(p.id) ?? 0;
               const contratoAssinado = p.contrato_status === "assinado";
+              // Mesma regra dos cards: quem assinou ou já pagou algo tem saldo a receber.
+              const participanteAReceber = resumo.aReceberPorParticipante.get(p.id);
               return (
                 <tr key={p.id}>
                   <td>{p.nome}</td>
@@ -93,7 +86,7 @@ export function FinanceiroPage() {
                   <td><span className="badge badge-neutral">{Math.max(1, Number(p.parcelas) || 1)}x</span></td>
                   <td><span className={`badge ${contratoAssinado ? "badge-ok" : "badge-warn"}`}>{contratoAssinado ? "Assinado" : "Pendente"}</span></td>
                   <td className="financial-number" style={{ color: "var(--teal)" }}>{fmtBRL(participanteRecebido)}</td>
-                  <td className="financial-number">{contratoAssinado ? fmtBRL(Math.max(0, Number(p.valor_pago) - participanteRecebido)) : "—"}</td>
+                  <td className="financial-number">{participanteAReceber === undefined ? "—" : fmtBRL(participanteAReceber)}</td>
                   <td style={{ textAlign: "right" }}>
                     <button className="btn-secondary" style={{ fontSize: 11, padding: "5px 9px" }} onClick={() => setEditingParticipant(p)}>
                       <i className="ti ti-pencil" /> Editar

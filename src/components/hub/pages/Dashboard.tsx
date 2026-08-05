@@ -1,4 +1,4 @@
-import { useCustos, useFinanceiroConfig, useLeads, useParcelasPagamento, useParticipants, usePendencias, custoValor, categoriaLabel, fmtBRL, isDeclined, pipelineStage, NEGOTIATION_STAGES, STAGE_CONFIRMADO, STAGE_CONTRATO, STAGE_NEGOCIACAO } from "@/lib/hub-api";
+import { useCustos, useFinanceiroConfig, useLeads, useParcelasPagamento, useParticipants, usePendencias, custoValor, categoriaLabel, fmtBRL, isDeclined, pipelineStage, resumoFinanceiro, NEGOTIATION_STAGES, STAGE_CONFIRMADO, STAGE_CONTRATO, STAGE_NEGOCIACAO } from "@/lib/hub-api";
 
 export function DashboardPage() {
   const { data: participants = [] } = useParticipants();
@@ -8,9 +8,9 @@ export function DashboardPage() {
   const { data: custos = [] } = useCustos();
   const { data: parcelas = [] } = useParcelasPagamento();
 
-  const signedParticipants = participants.filter((p) => p.contrato_status === "assinado");
-  const signedIds = new Set(signedParticipants.map((participant) => participant.id));
-  const paidInstallments = parcelas.filter((parcela) => parcela.paga && signedIds.has(parcela.participant_id));
+  // Mesma fonte usada na tela Financeiro, para os números nunca divergirem.
+  const resumo = resumoFinanceiro(participants, parcelas);
+  const paidInstallments = resumo.parcelasPagas;
   const confirmedPipelineLeads = leads.filter((lead) =>
     !isDeclined(lead)
     && [STAGE_CONFIRMADO, STAGE_CONTRATO].includes(pipelineStage(lead.passo)),
@@ -22,7 +22,7 @@ export function DashboardPage() {
     !leadNames.has(participant.nome.toLowerCase().trim()),
   );
   const confirmedTotal = confirmedPipelineLeads.length + orphanParticipants.length;
-  const pagamentosRecebidos = paidInstallments.reduce((s, parcela) => s + Number(parcela.valor || 0), 0);
+  const pagamentosRecebidos = resumo.recebido;
   const minimoViavel = 1_800_000;
   const falta = Math.max(0, minimoViavel - pagamentosRecebidos);
 
@@ -53,8 +53,8 @@ export function DashboardPage() {
         />
         <MetricCard icon="ti-calendar" label="Duração da missão" value="9 dias" sub="Pequim · Xangai · Hangzhou"
           tooltip="Duração total da viagem à China: 9 dias percorrendo Pequim (capital política), Xangai (capital financeira) e Hangzhou (capital tecnológica)." />
-        <MetricCard icon="ti-cash" label="Pagamentos recebidos" value={fmtBRL(pagamentosRecebidos)} sub={`${paidInstallments.length} parcela(s) paga(s) de contratos assinados`} valueClass="metric-ok"
-          tooltip="Soma das parcelas já marcadas como pagas, considerando apenas participantes com contrato assinado. É o dinheiro efetivamente em caixa até agora." />
+        <MetricCard icon="ti-cash" label="Pagamentos recebidos" value={fmtBRL(pagamentosRecebidos)} sub={`${paidInstallments.length} parcela(s) paga(s)`} valueClass="metric-ok"
+          tooltip="Dinheiro efetivamente em caixa: todas as parcelas marcadas como pagas, inclusive de participantes cujo contrato ainda está pendente." />
         <MetricCard icon="ti-alert-circle" label="Valor restante para o mínimo viável" value={fmtBRL(falta)} sub={`mínimo viável: ${fmtBRL(minimoViavel)}`} valueClass="metric-danger"
           tooltip="Quanto ainda falta receber para atingir o faturamento mínimo que torna a missão viável (R$ 1.800.000). Diminui conforme as parcelas são pagas." />
       </div>
