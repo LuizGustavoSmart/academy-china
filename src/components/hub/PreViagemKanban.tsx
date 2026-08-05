@@ -122,11 +122,16 @@ export function PreViagemKanban({ onViewParticipant }: { onViewParticipant?: (id
     }
     if (Object.keys(patch).length) updateParticipant.mutate({ id: pid, patch });
 
-    // Touchpoints: coluna N = etapas anteriores realizadas, N em diante zeradas. Nas colunas
+    // Touchpoints: coluna N = etapas anteriores realizadas, a etapa da coluna fica "em_andamento"
+    // (é isso que mantém o card na coluna de destino) e as seguintes zeradas. Nas colunas
     // "formulário enviado"/"formulário preenchido" (0 e 1) todos ficam zerados.
     const tpTarget = target - 2;
     const patches = TPS
-      .map((code, i) => ({ participant_id: pid, touchpoint_code: code, status: i < tpTarget ? "realizado" : "nao_iniciado" }))
+      .map((code, i) => ({
+        participant_id: pid,
+        touchpoint_code: code,
+        status: i < tpTarget ? "realizado" : i === tpTarget ? "em_andamento" : "nao_iniciado",
+      }))
       .filter((t) => getStatus(tpMap, pid, t.touchpoint_code) !== t.status);
     if (patches.length) upsertMany.mutate(patches);
 
