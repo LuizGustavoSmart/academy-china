@@ -770,47 +770,6 @@ function distributeAutomaticParcelas(
   });
 }
 
-function redistributeEditedParcela(
-  parcelas: ParcelaPagamento[],
-  targetId: string,
-  targetValue: number,
-): ParcelaPagamento[] {
-  if (parcelas.length === 0) {
-    throw new Error("Não foi possível localizar as parcelas deste contrato.");
-  }
-  const totalCentavos = parcelas.reduce(
-    (total, parcela) => total + Math.round(Number(parcela.valor || 0) * 100),
-    0,
-  );
-  let next = parcelas.map((parcela) => parcela.id === targetId
-    ? { ...parcela, valor: targetValue, valor_manual: true }
-    : { ...parcela });
-
-  if (next.length === 1) {
-    if (Math.round(targetValue * 100) !== totalCentavos) {
-      throw new Error("A única parcela deve ter o mesmo valor do contrato.");
-    }
-    return next;
-  }
-
-  if (!next.some((parcela) => !parcela.valor_manual)) {
-    const compensation = [...next]
-      .filter((parcela) => parcela.id !== targetId)
-      .sort((a, b) => b.numero - a.numero)[0];
-    next = next.map((parcela) => parcela.id === compensation.id
-      ? { ...parcela, valor_manual: false }
-      : parcela);
-  }
-
-  const manualCentavos = next
-    .filter((parcela) => parcela.valor_manual)
-    .reduce((total, parcela) => total + Math.round(Number(parcela.valor || 0) * 100), 0);
-  if (manualCentavos > totalCentavos) {
-    throw new Error("A soma das parcelas manuais ultrapassa o valor do contrato.");
-  }
-  return distributeAutomaticParcelas(next, totalCentavos);
-}
-
 function buildLocalParcelas(participants: Participant[]): ParcelaPagamento[] {
   const overrides = readLocalParcelas();
   const now = new Date().toISOString();
@@ -878,17 +837,6 @@ export function useParcelasPagamento(participantId?: string) {
 
 export function useUpdateParcelaPagamento() {
   const qc = useQueryClient();
-  const cachedParticipantParcelas = (id: string) => {
-    const matches = qc
-      .getQueriesData<ParcelaPagamento[]>({ queryKey: ["hub_parcelas_pagamento"] })
-      .map(([, data]) => data ?? [])
-      .find((data) => data.some((parcela) => parcela.id === id)) ?? [];
-    const target = matches.find((parcela) => parcela.id === id);
-    return target
-      ? matches.filter((parcela) => parcela.participant_id === target.participant_id)
-      : [];
-  };
-
   return useMutation({
     mutationFn: async ({
       id,
@@ -900,18 +848,11 @@ export function useUpdateParcelaPagamento() {
       if (id.startsWith("local:")) {
         const overrides = readLocalParcelas();
         if (patch.valor !== undefined) {
-          const next = redistributeEditedParcela(
-            cachedParticipantParcelas(id),
-            id,
-            patch.valor,
-          );
-          for (const parcela of next) {
-            overrides[parcela.id] = {
-              ...overrides[parcela.id],
-              valor: parcela.valor,
-              valor_manual: parcela.valor_manual,
-            };
-          }
+          overrides[id] = {
+            ...overrides[id],
+            valor: patch.valor,
+            valor_manual: true,
+          };
         } else {
           const current = overrides[id] ?? {};
           overrides[id] = {
@@ -926,27 +867,12 @@ export function useUpdateParcelaPagamento() {
         return;
       }
       if (patch.valor !== undefined) {
-        const rpc = await sb.rpc("update_parcela_valor", {
-          p_parcela_id: id,
-          p_valor: patch.valor,
-        });
-        if (!rpc.error) return;
-
-        // Compatibilidade temporária enquanto a nova migration ainda não foi
-        // aplicada: redistribui no cliente e persiste somente os valores.
-        const next = redistributeEditedParcela(
-          cachedParticipantParcelas(id),
-          id,
-          patch.valor,
-        );
-        const updates = await Promise.all(next.map((parcela) =>
-          sb
-            .from("parcelas_pagamento")
-            .update({ valor: parcela.valor, updated_at: new Date().toISOString() })
-            .eq("id", parcela.id),
-        ));
-        const failed = updates.find((result) => result.error);
-        if (failed?.error) throw failed.error;
+        // Edição livre: grava apenas a parcela editada, sem redistribuir as demais.
+        const { error: valorError } = await sb
+          .from("parcelas_pagamento")
+          .update({ valor: patch.valor, valor_manual: true, updated_at: new Date().toISOString() })
+          .eq("id", id);
+        if (valorError) throw valorError;
         return;
       }
       const payload: Record<string, unknown> = {
