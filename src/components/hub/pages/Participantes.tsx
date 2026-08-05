@@ -40,6 +40,17 @@ function paymentStatus(parcelas: ParcelaPagamento[]) {
   return "pendente";
 }
 
+/** Cada parcela pode ter valor livre (ex.: 50% + 25% + 25%), então só faz sentido
+ * mostrar um valor único quando todas são iguais. */
+function valorPorParcelaLabel(parcelas: ParcelaPagamento[], valorTotal: number, quantidade: number) {
+  const valores = parcelas.map((parcela) => Math.round(Number(parcela.valor || 0) * 100));
+  if (valores.length === 0) {
+    return fmtBRL(Number(valorTotal || 0) / Math.max(1, Number(quantidade) || 1));
+  }
+  const todasIguais = valores.every((valor) => valor === valores[0]);
+  return todasIguais ? fmtBRL(valores[0] / 100) : "valores livres (ver parcelas)";
+}
+
 /** null/"" = ainda não respondeu essa etapa do formulário (alguns registros mais antigos, sem
  * origem no formulário, gravam "" em vez de null — tratamos os dois como "não informado");
  * "Nenhuma" = respondeu que não tem restrição; qualquer outro texto = respondeu que tem, com o detalhe. */
@@ -635,7 +646,9 @@ function ProfileView({ participant, onBack }: { participant: Participant; onBack
             <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 12 }}>
               <span style={{ color: "var(--text3)" }}>Valor por parcela (R$)</span>
               <span style={{ fontWeight: 500 }}>
-                {((p.valor_pago ?? 0) / Math.max(1, p.parcelas ?? 1)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                {/* Com valores livres por parcela a divisão simples mentiria: mostra
+                    o valor real quando são iguais e avisa quando são diferentes. */}
+                {valorPorParcelaLabel(parcelas, p.valor_pago, p.parcelas)}
               </span>
             </div>
             <StatusRow label="Contrato" field="contrato_status" value={p.contrato_status} onSave={save} options={["pendente","assinado"]} />

@@ -120,7 +120,7 @@ const PAGE_META: Record<Tab, { title: string; sub: string }> = {
   aliancas: { title: "Alianças estratégicas", sub: "Parceiros institucionais da Academy" },
   experiencia: { title: "Formulário de Experiência", sub: "Curadoria individual de cada participante" },
   sincronizacao: { title: "Sincronização", sub: "Exportar CRM para Google Sheets" },
-  config: { title: "Configurações", sub: "Responsáveis e ajustes gerais" },
+  config: { title: "Configurações", sub: "Responsáveis e automação de e-mails" },
 };
 
 const SUBTABS: Record<string, { id: string; label: string; icon: string }[]> = {
@@ -147,6 +147,12 @@ const SUBTABS: Record<string, { id: string; label: string; icon: string }[]> = {
   aliancas: [
     { id: "dash", label: "Visão geral", icon: "ti-handshake" },
     { id: "marketing", label: "Marketing", icon: "ti-speakerphone" },
+  ],
+  // "dash" é o sub padrão de switchTab — usá-lo na primeira aba mantém ela
+  // destacada ao entrar em Configurações, como nas demais páginas.
+  config: [
+    { id: "dash", label: "Responsáveis", icon: "ti-users-plus" },
+    { id: "emails", label: "Automação de E-mails", icon: "ti-mail-cog" },
   ],
 };
 
@@ -275,7 +281,7 @@ function Index() {
             {tab === "aliancas" && <AliancasPage sub={sub} />}
             {tab === "experiencia" && <ExperienciaPage />}
             {tab === "sincronizacao" && <SincronizacaoPage />}
-            {tab === "config" && <ConfiguracoesPage />}
+            {tab === "config" && <ConfiguracoesPage sub={sub} />}
           </div>
         </div>
       </div>

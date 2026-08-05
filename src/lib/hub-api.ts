@@ -770,47 +770,6 @@ function distributeAutomaticParcelas(
   });
 }
 
-function redistributeEditedParcela(
-  parcelas: ParcelaPagamento[],
-  targetId: string,
-  targetValue: number,
-): ParcelaPagamento[] {
-  if (parcelas.length === 0) {
-    throw new Error("Não foi possível localizar as parcelas deste contrato.");
-  }
-  const totalCentavos = parcelas.reduce(
-    (total, parcela) => total + Math.round(Number(parcela.valor || 0) * 100),
-    0,
-  );
-  let next = parcelas.map((parcela) => parcela.id === targetId
-    ? { ...parcela, valor: targetValue, valor_manual: true }
-    : { ...parcela });
-
-  if (next.length === 1) {
-    if (Math.round(targetValue * 100) !== totalCentavos) {
-      throw new Error("A única parcela deve ter o mesmo valor do contrato.");
-    }
-    return next;
-  }
-
-  if (!next.some((parcela) => !parcela.valor_manual)) {
-    const compensation = [...next]
-      .filter((parcela) => parcela.id !== targetId)
-      .sort((a, b) => b.numero - a.numero)[0];
-    next = next.map((parcela) => parcela.id === compensation.id
-      ? { ...parcela, valor_manual: false }
-      : parcela);
-  }
-
-  const manualCentavos = next
-    .filter((parcela) => parcela.valor_manual)
-    .reduce((total, parcela) => total + Math.round(Number(parcela.valor || 0) * 100), 0);
-  if (manualCentavos > totalCentavos) {
-    throw new Error("A soma das parcelas manuais ultrapassa o valor do contrato.");
-  }
-  return distributeAutomaticParcelas(next, totalCentavos);
-}
-
 function buildLocalParcelas(participants: Participant[]): ParcelaPagamento[] {
   const overrides = readLocalParcelas();
   const now = new Date().toISOString();
@@ -878,17 +837,6 @@ export function useParcelasPagamento(participantId?: string) {
 
 export function useUpdateParcelaPagamento() {
   const qc = useQueryClient();
-  const cachedParticipantParcelas = (id: string) => {
-    const matches = qc
-      .getQueriesData<ParcelaPagamento[]>({ queryKey: ["hub_parcelas_pagamento"] })
-      .map(([, data]) => data ?? [])
-      .find((data) => data.some((parcela) => parcela.id === id)) ?? [];
-    const target = matches.find((parcela) => parcela.id === id);
-    return target
-      ? matches.filter((parcela) => parcela.participant_id === target.participant_id)
-      : [];
-  };
-
   return useMutation({
     mutationFn: async ({
       id,
@@ -900,18 +848,11 @@ export function useUpdateParcelaPagamento() {
       if (id.startsWith("local:")) {
         const overrides = readLocalParcelas();
         if (patch.valor !== undefined) {
-          const next = redistributeEditedParcela(
-            cachedParticipantParcelas(id),
-            id,
-            patch.valor,
-          );
-          for (const parcela of next) {
-            overrides[parcela.id] = {
-              ...overrides[parcela.id],
-              valor: parcela.valor,
-              valor_manual: parcela.valor_manual,
-            };
-          }
+          overrides[id] = {
+            ...overrides[id],
+            valor: patch.valor,
+            valor_manual: true,
+          };
         } else {
           const current = overrides[id] ?? {};
           overrides[id] = {
@@ -926,27 +867,12 @@ export function useUpdateParcelaPagamento() {
         return;
       }
       if (patch.valor !== undefined) {
-        const rpc = await sb.rpc("update_parcela_valor", {
-          p_parcela_id: id,
-          p_valor: patch.valor,
-        });
-        if (!rpc.error) return;
-
-        // Compatibilidade temporária enquanto a nova migration ainda não foi
-        // aplicada: redistribui no cliente e persiste somente os valores.
-        const next = redistributeEditedParcela(
-          cachedParticipantParcelas(id),
-          id,
-          patch.valor,
-        );
-        const updates = await Promise.all(next.map((parcela) =>
-          sb
-            .from("parcelas_pagamento")
-            .update({ valor: parcela.valor, updated_at: new Date().toISOString() })
-            .eq("id", parcela.id),
-        ));
-        const failed = updates.find((result) => result.error);
-        if (failed?.error) throw failed.error;
+        // Edição livre: grava apenas a parcela editada, sem redistribuir as demais.
+        const { error: valorError } = await sb
+          .from("parcelas_pagamento")
+          .update({ valor: patch.valor, valor_manual: true, updated_at: new Date().toISOString() })
+          .eq("id", id);
+        if (valorError) throw valorError;
         return;
       }
       const payload: Record<string, unknown> = {
@@ -1031,6 +957,85 @@ export const custoValor = (c: Custo) => {
   if (c.tipo === "variavel") return Number(c.valor_variavel || 0);
   return Number(c.valor_fixo || 0) + Number(c.valor_variavel || 0);
 };
+
+export type ResumoFinanceiro = {
+  /** Total pago por participante, somando as parcelas marcadas como pagas. */
+  recebidoPorParticipante: Map<string, number>;
+  /** Saldo em aberto por participante. Só existe para quem entra nos totais. */
+  aReceberPorParticipante: Map<string, number>;
+  /** Participantes que entram nos totais: assinaram ou já pagaram alguma parcela. */
+  entraNosTotais: (participantId: string) => boolean;
+  /** Soma do valor cheio apenas dos contratos assinados. */
+  totalContratosAssinados: number;
+  /** Dinheiro em caixa: todas as parcelas pagas, mesmo de contrato pendente. */
+  recebido: number;
+  /** Saldo a entrar de quem assinou ou já pagou algo. */
+  aReceber: number;
+  /** Parcelas pagas consideradas no recebido. */
+  parcelasPagas: ParcelaPagamento[];
+};
+
+/**
+ * Fonte única dos números financeiros — dashboard e tela Financeiro consomem
+ * daqui para nunca divergirem.
+ *
+ * Um participante entra nos totais quando existe compromisso real: contrato
+ * assinado OU pelo menos uma parcela paga. Assim um pagamento de contrato ainda
+ * pendente conta como dinheiro em caixa, mas quem nunca assinou nem pagou não
+ * infla o "a receber". O total de contratos fechados continua contando somente
+ * os assinados, por isso ele não fecha com recebido + a receber.
+ */
+export function resumoFinanceiro(
+  participants: Participant[],
+  parcelas: ParcelaPagamento[],
+): ResumoFinanceiro {
+  const porId = new Map(participants.map((participant) => [participant.id, participant]));
+  const recebidoPorParticipante = new Map<string, number>();
+  const parcelasPagas: ParcelaPagamento[] = [];
+
+  for (const parcela of parcelas) {
+    if (!parcela.paga || !porId.has(parcela.participant_id)) continue;
+    parcelasPagas.push(parcela);
+    recebidoPorParticipante.set(
+      parcela.participant_id,
+      (recebidoPorParticipante.get(parcela.participant_id) ?? 0) + Number(parcela.valor || 0),
+    );
+  }
+
+  const entra = (participant: Participant) =>
+    participant.contrato_status === "assinado"
+    || (recebidoPorParticipante.get(participant.id) ?? 0) > 0;
+
+  const aReceberPorParticipante = new Map<string, number>();
+  let totalContratosAssinados = 0;
+  let recebido = 0;
+  let aReceber = 0;
+
+  for (const participant of participants) {
+    if (participant.contrato_status === "assinado") {
+      totalContratosAssinados += Number(participant.valor_pago || 0);
+    }
+    if (!entra(participant)) continue;
+    const pago = recebidoPorParticipante.get(participant.id) ?? 0;
+    const saldo = Math.max(0, Number(participant.valor_pago || 0) - pago);
+    aReceberPorParticipante.set(participant.id, saldo);
+    recebido += pago;
+    aReceber += saldo;
+  }
+
+  return {
+    recebidoPorParticipante,
+    aReceberPorParticipante,
+    entraNosTotais: (participantId: string) => {
+      const participant = porId.get(participantId);
+      return participant ? entra(participant) : false;
+    },
+    totalContratosAssinados,
+    recebido,
+    aReceber,
+    parcelasPagas,
+  };
+}
 
 // ────────── MENSAGENS ──────────
 export function useMensagens(etapa: string) {
@@ -1278,4 +1283,227 @@ export function respAvatar(nome: string): { initials: string; color: string } {
   const parts = nome.trim().split(/\s+/);
   const initials = ((parts[0]?.[0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
   return { initials: initials || "?", color: `hsl(${RESP_HUES[h % RESP_HUES.length]} 42% 46%)` };
+}
+
+// ────────── AUTOMAÇÃO DE E-MAILS (PRÉ-VIAGEM) ──────────
+export type EmailTemplate = {
+  id: string;
+  nome: string;
+  assunto: string;
+  conteudo: string;
+  ativo: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PipelineEmailAutomation = {
+  id: string;
+  pipeline_id: string;
+  etapa_key: string;
+  email_template_id: string | null;
+  automacao_ativa: boolean;
+  confirmacao_obrigatoria: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type EmailSendHistoryEntry = {
+  id: string;
+  participant_id: string | null;
+  etapa_origem: string | null;
+  etapa_destino: string;
+  email_template_id: string | null;
+  destinatario: string;
+  assunto_enviado: string;
+  conteudo_enviado: string;
+  status_envio: "pendente" | "enviado" | "erro" | "cancelado";
+  erro_envio: string | null;
+  enviado_em: string | null;
+  enviado_por: string | null;
+  created_at: string;
+};
+
+/** Placeholders hoje disponíveis para os modelos de e-mail. Refletem apenas
+ * dados que de fato existem em `participants`/no card de Pré-Viagem — novos
+ * campos (destino, data da viagem, responsável...) entram aqui quando
+ * existirem colunas correspondentes no banco. */
+export const EMAIL_PLACEHOLDERS: { key: string; label: string }[] = [
+  { key: "nome_contato", label: "Nome do contato" },
+  { key: "email_contato", label: "E-mail do contato" },
+  { key: "etapa_anterior", label: "Etapa anterior" },
+  { key: "etapa_atual", label: "Etapa atual" },
+];
+
+/** Substitui `{{chave}}` no texto pelos valores do contexto. Chaves sem valor
+ * correspondente permanecem no texto sem alteração. */
+export function resolvePlaceholders(texto: string, contexto: Record<string, string | null | undefined>): string {
+  return texto.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, key) => {
+    const value = contexto[key];
+    return value == null ? match : value;
+  });
+}
+
+/** Placeholders escritos no modelo que não existem — sairiam literais no e-mail
+ * do participante, então avisamos antes de salvar. */
+export function placeholdersDesconhecidos(...textos: string[]): string[] {
+  const validos = new Set(EMAIL_PLACEHOLDERS.map((p) => p.key));
+  const achados = new Set<string>();
+  for (const texto of textos) {
+    for (const m of texto.matchAll(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g)) {
+      if (!validos.has(m[1])) achados.add(m[1]);
+    }
+  }
+  return [...achados];
+}
+
+export function useEmailTemplates() {
+  return useQuery<EmailTemplate[]>({
+    queryKey: ["hub_email_templates"],
+    queryFn: async () => {
+      const { data, error } = await sb.from("email_templates").select("*").order("nome");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useCreateEmailTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (patch: Pick<EmailTemplate, "nome" | "assunto" | "conteudo"> & Partial<Pick<EmailTemplate, "ativo">>) => {
+      const { data, error } = await sb.from("email_templates").insert(patch).select().single();
+      if (error) throw error;
+      return data as EmailTemplate;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_email_templates"] }),
+  });
+}
+
+export function useUpdateEmailTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<Pick<EmailTemplate, "nome" | "assunto" | "conteudo" | "ativo">> }) => {
+      const { data, error } = await sb.from("email_templates").update(patch).eq("id", id).select().single();
+      if (error) throw error;
+      return data as EmailTemplate;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_email_templates"] }),
+  });
+}
+
+export function useDuplicateEmailTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (template: EmailTemplate) => {
+      const { data, error } = await sb
+        .from("email_templates")
+        .insert({ nome: `${template.nome} (cópia)`, assunto: template.assunto, conteudo: template.conteudo, ativo: template.ativo })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as EmailTemplate;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_email_templates"] }),
+  });
+}
+
+export function useDeleteEmailTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await sb.from("email_templates").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_email_templates"] }),
+  });
+}
+
+export function usePipelineEmailAutomations(pipelineId: string = "pre_viagem") {
+  return useQuery<PipelineEmailAutomation[]>({
+    queryKey: ["hub_pipeline_email_automations", pipelineId],
+    queryFn: async () => {
+      const { data, error } = await sb.from("pipeline_email_automations").select("*").eq("pipeline_id", pipelineId);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+// Update otimista: alternar um switch precisa responder na hora, senão a tela
+// parece travada durante o round-trip e o usuário clica duas vezes.
+export function useUpsertPipelineEmailAutomation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (patch: Partial<PipelineEmailAutomation> & { pipeline_id: string; etapa_key: string }) => {
+      const { data, error } = await sb
+        .from("pipeline_email_automations")
+        .upsert(patch, { onConflict: "pipeline_id,etapa_key" })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as PipelineEmailAutomation;
+    },
+    onMutate: async (patch) => {
+      const key = ["hub_pipeline_email_automations", patch.pipeline_id];
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<PipelineEmailAutomation[]>(key);
+      qc.setQueryData<PipelineEmailAutomation[]>(key, (old = []) => {
+        const i = old.findIndex((a) => a.etapa_key === patch.etapa_key);
+        if (i < 0) return [...old, { id: `tmp-${patch.etapa_key}`, ...patch } as PipelineEmailAutomation];
+        const next = [...old];
+        next[i] = { ...next[i], ...patch };
+        return next;
+      });
+      return { prev, key };
+    },
+    onError: (_e, _v, ctx) => { if (ctx?.prev) qc.setQueryData(ctx.key, ctx.prev); },
+    onSettled: (_d, _e, v) => qc.invalidateQueries({ queryKey: ["hub_pipeline_email_automations", v.pipeline_id] }),
+  });
+}
+
+export function useEmailSendHistory(participantId?: string) {
+  return useQuery<EmailSendHistoryEntry[]>({
+    queryKey: ["hub_email_send_history", participantId ?? "all"],
+    queryFn: async () => {
+      let query = sb.from("email_send_history").select("*").order("created_at", { ascending: false });
+      if (participantId) query = query.eq("participant_id", participantId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+/** Envia o e-mail de transição de etapa via edge function `send-stage-email`
+ * e sempre registra o resultado (sucesso ou erro) em `email_send_history`. */
+export function useSendStageEmail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      participant_id: string;
+      etapa_origem: string | null;
+      etapa_destino: string;
+      email_template_id: string | null;
+      destinatario: string;
+      assunto: string;
+      conteudo: string;
+      enviado_por?: string | null;
+    }) => {
+      const { data, error } = await hubSupabase.functions.invoke("send-stage-email", {
+        body: {
+          participant_id: input.participant_id,
+          etapa_origem: input.etapa_origem,
+          etapa_destino: input.etapa_destino,
+          email_template_id: input.email_template_id,
+          destinatario: input.destinatario,
+          assunto: input.assunto,
+          conteudo: input.conteudo,
+          enviado_por: input.enviado_por ?? null,
+        },
+      });
+      if (error) throw error;
+      return data as { status: "enviado" | "erro"; erro?: string };
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["hub_email_send_history"] }),
+  });
 }
