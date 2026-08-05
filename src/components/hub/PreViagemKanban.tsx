@@ -3,32 +3,22 @@ import {
   DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable,
   useSensor, useSensors, type DragEndEvent, type DragStartEvent,
 } from "@dnd-kit/core";
-import { useParticipants, useTouchpoints, useUpsertTouchpoints, useUpdateParticipant, type Participant, type Touchpoint } from "@/lib/hub-api";
+import {
+  useParticipants, useTouchpoints, useUpsertTouchpoints, useUpdateParticipant,
+  useEmailTemplates, usePipelineEmailAutomations, useSendStageEmail, resolvePlaceholders,
+  type Participant, type Touchpoint,
+} from "@/lib/hub-api";
+import { TPS, TP_NAMES, TP_DAYS, DEPARTURE_DATE, ETAPA_KEYS, etapaLabel, etapaCor, etapaIcone } from "@/lib/pre-viagem-etapas";
+import { StageEmailConfirmModal, type PendingStageEmail } from "@/components/hub/StageEmailConfirmModal";
 
 // ────────── CONSTANTES DA JORNADA ──────────
-export const TPS = ["D-60", "D-45", "D-30", "D-21", "D-14", "D-7", "D-3"];
-export const TP_NAMES: Record<string, string> = {
-  "D-60": "Kickoff", "D-45": "Aquecimento", "D-30": "Logística",
-  "D-21": "Dicas", "D-14": "Confirmação", "D-7": "Vídeos", "D-3": "Pré-embarque",
-};
-export const TP_DAYS: Record<string, number> = { "D-60": 60, "D-45": 45, "D-30": 30, "D-21": 21, "D-14": 14, "D-7": 7, "D-3": 3 };
-export const DEPARTURE_DATE = new Date("2026-10-28");
+export { TPS, TP_NAMES, TP_DAYS, DEPARTURE_DATE };
 
 // Colunas do board: formulário enviado → formulário preenchido → 7 touchpoints → Concluído.
 // Todo participante já entra pelo formulário público (não há mais criação manual pelo
 // comercial), então o board começa direto na etapa do formulário. Cor esquenta conforme o
 // embarque se aproxima.
-const COLS = ["formulario_enviado", "formulario_preenchido", ...TPS, "done"];
-const COL_COLORS: Record<string, string> = {
-  formulario_enviado: "#8a6d3b", formulario_preenchido: "#3f7d5c",
-  "D-60": "#185fa5", "D-45": "#4a6fc0", "D-30": "#7268c4", "D-21": "#945dbb",
-  "D-14": "#ad5299", "D-7": "#bc4767", "D-3": "#c0392b", done: "#0f6e56",
-};
-const COL_ICONS: Record<string, string> = {
-  formulario_enviado: "ti-clipboard-text", formulario_preenchido: "ti-clipboard-check",
-  "D-60": "ti-video", "D-45": "ti-flame", "D-30": "ti-plane-departure", "D-21": "ti-bulb",
-  "D-14": "ti-checklist", "D-7": "ti-movie", "D-3": "ti-luggage", done: "ti-confetti",
-};
+const COLS = ETAPA_KEYS;
 const COL_META: Record<string, { title: string; sub: string }> = {
   formulario_enviado: { title: "Formulário Enviado", sub: "Aguardando preenchimento do formulário público" },
   formulario_preenchido: { title: "Formulário preenchido", sub: "Dados recebidos — pronto para a jornada" },
@@ -99,6 +89,10 @@ export function PreViagemKanban({ onViewParticipant }: { onViewParticipant?: (id
   const { data: tps = [] } = useTouchpoints();
   const upsertMany = useUpsertTouchpoints();
   const updateParticipant = useUpdateParticipant();
+  const { data: automations = [] } = usePipelineEmailAutomations();
+  const { data: templates = [] } = useEmailTemplates();
+  const sendStageEmail = useSendStageEmail();
+  const [pendingEmail, setPendingEmail] = useState<PendingStageEmail | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -135,6 +129,61 @@ export function PreViagemKanban({ onViewParticipant }: { onViewParticipant?: (id
       .map((code, i) => ({ participant_id: pid, touchpoint_code: code, status: i < tpTarget ? "realizado" : "nao_iniciado" }))
       .filter((t) => getStatus(tpMap, pid, t.touchpoint_code) !== t.status);
     if (patches.length) upsertMany.mutate(patches);
+
+    // A movimentação do card já está persistida acima — a automação de e-mail é um efeito
+    // à parte, e cancelá-la nunca desfaz o movimento (ver Configurações › Automação de E-mails).
+    maybeTriggerStageEmail(part, COLS[current] ?? null, COLS[target]);
+  };
+
+  /** Dispara (ou pede confirmação de) o e-mail configurado para a etapa de destino. */
+  const maybeTriggerStageEmail = (part: Participant, etapaOrigem: string | null, etapaDestino: string) => {
+    const auto = automations.find((a) => a.etapa_key === etapaDestino);
+    if (!auto?.automacao_ativa || !auto.email_template_id) return;
+    const template = templates.find((t) => t.id === auto.email_template_id && t.ativo);
+    if (!template) return;
+
+    if (!part.email) {
+      alert(`A etapa "${etapaLabel(etapaDestino)}" tem automação de e-mail ativa, mas ${part.nome} não tem e-mail cadastrado. O card foi movido, o e-mail não foi enviado.`);
+      return;
+    }
+
+    const contexto = {
+      nome_contato: part.nome,
+      email_contato: part.email,
+      etapa_anterior: etapaLabel(etapaOrigem),
+      etapa_atual: etapaLabel(etapaDestino),
+    };
+    const payload: PendingStageEmail = {
+      participant_id: part.id,
+      participant_nome: part.nome,
+      etapa_origem: etapaOrigem,
+      etapa_destino: etapaDestino,
+      email_template_id: template.id,
+      destinatario: part.email,
+      assunto: resolvePlaceholders(template.assunto, contexto),
+      conteudo: resolvePlaceholders(template.conteudo, contexto),
+    };
+
+    if (auto.confirmacao_obrigatoria) setPendingEmail(payload);
+    else enviarEmail(payload);
+  };
+
+  const enviarEmail = (payload: PendingStageEmail) => {
+    sendStageEmail.mutate(
+      {
+        participant_id: payload.participant_id,
+        etapa_origem: payload.etapa_origem,
+        etapa_destino: payload.etapa_destino,
+        email_template_id: payload.email_template_id,
+        destinatario: payload.destinatario,
+        assunto: payload.assunto,
+        conteudo: payload.conteudo,
+      },
+      {
+        onSuccess: () => setPendingEmail(null),
+        onError: (e: any) => alert("Falha ao enviar o e-mail: " + (e?.message ?? e) + "\n\nO card permanece na nova etapa. A tentativa foi registrada no histórico de envios."),
+      },
+    );
   };
 
   const totalOverdue = parts.reduce((acc, p) => acc + countOverdue(tpMap, p.id), 0);
@@ -161,6 +210,13 @@ export function PreViagemKanban({ onViewParticipant }: { onViewParticipant?: (id
           {activePart && <CardInner p={activePart} tpMap={tpMap} overlay />}
         </DragOverlay>
       </DndContext>
+
+      <StageEmailConfirmModal
+        pending={pendingEmail}
+        sending={sendStageEmail.isPending}
+        onCancel={() => setPendingEmail(null)}
+        onConfirm={enviarEmail}
+      />
     </div>
   );
 }
@@ -170,7 +226,7 @@ function Column({ col, index, parts, tpMap, activeId, onViewParticipant }: {
   onViewParticipant?: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: col });
-  const color = COL_COLORS[col];
+  const color = etapaCor(col);
   const isDone = col === "done";
   const meta = COL_META[col];
   const title = meta ? meta.title : `${col} · ${TP_NAMES[col]}`;
@@ -179,7 +235,7 @@ function Column({ col, index, parts, tpMap, activeId, onViewParticipant }: {
     <div className={`pv-col${isOver ? " pv-col-over" : ""}`} style={{ "--pvc": color } as React.CSSProperties}>
       <div className="pv-col-head">
         <div className="pv-col-title">
-          <span className="pv-col-icon"><i className={`ti ${COL_ICONS[col]}`} /></span>
+          <span className="pv-col-icon"><i className={`ti ${etapaIcone(col)}`} /></span>
           <div>
             <div className="pv-col-name">{title}</div>
             <div className="pv-col-sub">{sub}</div>

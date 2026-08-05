@@ -514,3 +514,200 @@ tr:last-child td{border-bottom:none;} tr:hover td{background:var(--surface2);}
   .exp-sidebar{width:100%;border-right:none;border-bottom:.5px solid var(--border);}
 }
 .tl-edit-actions{display:flex;justify-content:flex-end;gap:8px;}
+
+/* ══════════ CONFIGURAÇÕES ══════════ */
+.cfg-page{display:flex;flex-direction:column;gap:18px;max-width:1000px;}
+.cfg-intro{font-size:12px;color:var(--text3);line-height:1.55;max-width:68ch;}
+
+/* Cabeçalho de card com resumo à direita (ex.: "3 de 10 ativas") */
+.cfg-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;border-bottom:.5px solid var(--border);background:var(--surface2);}
+.cfg-card-head h3{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--text);}
+.cfg-card-head h3 i{color:var(--text3);font-size:15px;}
+.cfg-card-body{padding:18px;}
+.cfg-count{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text2);background:var(--surface);border:.5px solid var(--border);border-radius:20px;padding:3px 10px;}
+.cfg-count.on{background:var(--teal-light);border-color:transparent;color:var(--teal);}
+
+/* ── Linha de etapa. --etc = cor da etapa, a mesma da coluna no board ── */
+.cfg-stage{
+  --etc:#888;
+  display:grid;grid-template-columns:minmax(190px,1.15fr) minmax(190px,1.5fr) auto auto;
+  align-items:center;gap:12px;
+  padding:11px 14px 11px 11px;background:var(--surface);
+  border:.5px solid var(--border);border-left:3px solid var(--border);border-radius:var(--radius-sm);
+  transition:border-color .16s ease,background .16s ease,box-shadow .16s ease;
+}
+.cfg-stage+.cfg-stage{margin-top:7px;}
+.cfg-stage:hover{box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cfg-stage.on{border-left-color:var(--etc);background:color-mix(in srgb,var(--etc) 3.5%,var(--surface));}
+.cfg-stage-id{display:flex;align-items:center;gap:10px;min-width:0;}
+.cfg-stage-icon{
+  width:30px;height:30px;border-radius:9px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:15px;
+  background:var(--surface2);color:var(--text3);
+  transition:background .16s ease,color .16s ease;
+}
+.cfg-stage.on .cfg-stage-icon{background:color-mix(in srgb,var(--etc) 14%,transparent);color:var(--etc);}
+.cfg-stage-name{font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* min-height reserva o espaço do aviso/"Salvo", senão a linha pula ao salvar */
+.cfg-stage-note{font-size:10.5px;color:var(--text3);margin-top:1px;min-height:15px;display:flex;align-items:center;gap:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cfg-stage-note.warn{color:var(--amber);}
+.cfg-stage-actions{display:flex;align-items:center;gap:6px;}
+.cfg-stage select:disabled{opacity:.55;}
+
+/* ── Switch. Substitui o checkbox nativo, que destoava do resto do Hub ── */
+.cfg-switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:11.5px;color:var(--text2);user-select:none;}
+.cfg-switch input{position:absolute;opacity:0;width:0;height:0;}
+.cfg-switch-track{
+  width:34px;height:20px;border-radius:20px;background:var(--surface2);
+  border:.5px solid var(--border-strong);position:relative;flex-shrink:0;
+  transition:background .16s ease,border-color .16s ease;
+}
+.cfg-switch-track::after{
+  content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);
+  transition:transform .16s cubic-bezier(.2,.8,.2,1);
+}
+/* Neutro de propósito: a única cor de uma linha é a da própria etapa. */
+.cfg-switch input:checked+.cfg-switch-track{background:var(--text2);border-color:var(--text2);}
+.cfg-switch input:checked+.cfg-switch-track::after{transform:translateX(14px);}
+.cfg-switch input:disabled+.cfg-switch-track{opacity:.5;cursor:not-allowed;}
+.cfg-switch input:focus-visible+.cfg-switch-track{box-shadow:0 0 0 3px color-mix(in srgb,var(--text2) 26%,transparent);}
+.cfg-switch.stage input:checked+.cfg-switch-track{background:var(--etc);border-color:var(--etc);}
+.cfg-switch.stage input:focus-visible+.cfg-switch-track{box-shadow:0 0 0 3px color-mix(in srgb,var(--etc) 26%,transparent);}
+
+/* ── "Salvo" — o único momento com motion expressivo desta tela ── */
+.cfg-saved{
+  display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:600;color:var(--teal);
+  animation:cfgSaved 1.6s ease forwards;pointer-events:none;white-space:nowrap;
+}
+@keyframes cfgSaved{
+  0%{opacity:0;transform:translateY(3px)}
+  12%{opacity:1;transform:none}
+  70%{opacity:1}
+  100%{opacity:0}
+}
+
+/* ── Linha de modelo ── */
+.cfg-tpl{
+  display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;
+  padding:11px 14px;background:var(--surface);border:.5px solid var(--border);border-radius:var(--radius-sm);
+  transition:box-shadow .16s ease,border-color .16s ease;
+  animation:cfgRowIn .2s cubic-bezier(.2,.8,.3,1) both;
+}
+.cfg-tpl+.cfg-tpl{margin-top:7px;}
+.cfg-tpl:hover{box-shadow:0 2px 8px rgba(0,0,0,.05);border-color:var(--border-strong);}
+.cfg-tpl.off{background:var(--bg);}
+.cfg-tpl.off .cfg-tpl-name,.cfg-tpl.off .cfg-tpl-subject{opacity:.55;}
+.cfg-tpl-name{font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.cfg-tpl-subject{font-size:11px;color:var(--text3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cfg-tpl-meta{font-size:10.5px;color:var(--text3);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cfg-tpl-actions{display:flex;align-items:center;gap:4px;}
+@keyframes cfgRowIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+/* Botão só de ícone, para as ações repetidas das listas */
+.cfg-icon-btn{
+  width:28px;height:28px;flex-shrink:0;border:.5px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--surface);color:var(--text3);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;font-size:14px;
+  transition:background .12s ease,color .12s ease,border-color .12s ease;
+}
+.cfg-icon-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--border-strong);}
+.cfg-icon-btn.danger:hover{background:var(--accent-light);color:var(--accent);border-color:transparent;}
+.cfg-icon-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+/* ── Estado vazio ── */
+.cfg-empty{
+  display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;
+  padding:34px 20px;border:1.5px dashed var(--border);border-radius:var(--radius);color:var(--text3);
+}
+.cfg-empty i{font-size:24px;opacity:.5;}
+.cfg-empty strong{font-size:13px;font-weight:600;color:var(--text2);}
+.cfg-empty p{font-size:11.5px;max-width:44ch;line-height:1.5;}
+.cfg-empty.error{border-color:#f2d4d0;border-style:solid;background:#fff8f7;}
+.cfg-empty.error i{color:var(--accent);opacity:.8;}
+.cfg-empty.error strong{color:#a83225;}
+.cfg-error-detail{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;line-height:1.45;
+  color:#a83225;background:#fff3f1;border:1px solid #f2d4d0;border-radius:6px;
+  padding:6px 9px;max-width:56ch;word-break:break-word;text-align:left;
+}
+
+/* ── Skeleton ── */
+.cfg-skel{height:52px;border-radius:var(--radius-sm);background:linear-gradient(90deg,var(--surface2) 25%,#e9e8e3 50%,var(--surface2) 75%);background-size:200% 100%;animation:cfgShimmer 1.3s ease-in-out infinite;}
+.cfg-skel+.cfg-skel{margin-top:7px;}
+@keyframes cfgShimmer{to{background-position:-200% 0}}
+
+/* ── Histórico ── */
+.cfg-hist-filters{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+.cfg-chip{
+  font-size:11px;padding:4px 11px;border-radius:20px;border:.5px solid var(--border);
+  background:var(--surface);color:var(--text2);cursor:pointer;
+  transition:background .12s ease,color .12s ease,border-color .12s ease;
+}
+.cfg-chip:hover{border-color:var(--border-strong);color:var(--text);}
+.cfg-chip.active{background:var(--text);border-color:var(--text);color:#fff;}
+.cfg-hist-error{
+  display:flex;align-items:flex-start;gap:6px;font-size:11px;color:#a83225;
+  background:#fff3f1;border:1px solid #f2d4d0;border-radius:6px;padding:7px 9px;margin-top:6px;line-height:1.45;
+}
+.cfg-hist-error i{margin-top:1px;flex-shrink:0;}
+
+/* ── Editor de modelo ── */
+.cfg-ph-row{display:flex;flex-wrap:wrap;gap:6px;}
+.cfg-ph{
+  font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  padding:5px 9px;border-radius:var(--radius-sm);border:.5px dashed var(--border-strong);
+  background:var(--surface);color:var(--text2);cursor:pointer;
+  transition:background .12s ease,color .12s ease,border-color .12s ease;
+}
+.cfg-ph:hover{background:var(--accent-light);color:var(--accent);border-color:var(--accent);border-style:solid;}
+.cfg-preview{border:.5px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;}
+.cfg-preview-subject{padding:10px 14px;background:var(--surface2);border-bottom:.5px solid var(--border);font-size:13px;font-weight:600;}
+.cfg-preview-body{padding:14px;font-size:13px;line-height:1.6;white-space:pre-wrap;max-height:280px;overflow-y:auto;}
+.cfg-muted{color:var(--text3);font-weight:400;}
+
+/* ── Responsáveis ── */
+.cfg-resp{
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:11px;
+  padding:9px 12px;background:var(--surface);border:.5px solid var(--border);border-radius:var(--radius-sm);
+  transition:box-shadow .16s ease,border-color .16s ease;
+}
+.cfg-resp+.cfg-resp{margin-top:7px;}
+.cfg-resp:hover{box-shadow:0 2px 8px rgba(0,0,0,.05);border-color:var(--border-strong);}
+.cfg-resp.off{background:var(--bg);}
+.cfg-resp.off .cfg-resp-avatar,.cfg-resp.off .cfg-resp-name{opacity:.5;}
+.cfg-resp-avatar{
+  width:30px;height:30px;border-radius:50%;color:#fff;flex-shrink:0;
+  display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;
+}
+.cfg-resp-name{font-size:13px;font-weight:500;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.cfg-resp-actions{display:flex;align-items:center;gap:4px;}
+.cfg-swatches{display:flex;gap:5px;flex-wrap:wrap;}
+.cfg-swatch{
+  width:22px;height:22px;border-radius:50%;cursor:pointer;border:1px solid var(--border);
+  transition:transform .12s cubic-bezier(.2,.8,.2,1),box-shadow .12s ease;
+}
+.cfg-swatch:hover{transform:scale(1.12);}
+.cfg-swatch[aria-pressed="true"]{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--text);}
+.cfg-swatch:focus-visible{outline:2px solid var(--text);outline-offset:2px;}
+
+/* ── Responsivo ── */
+@media (max-width:880px){
+  .cfg-stage{grid-template-columns:1fr;gap:10px;}
+  .cfg-stage-actions{justify-content:flex-end;}
+  .cfg-tpl{grid-template-columns:1fr;}
+  .cfg-tpl-actions{justify-content:flex-end;}
+  .cfg-tpl-meta{display:none;}
+}
+
+/* ── Acessibilidade ── */
+.sub-tab-btn:focus-visible,.cfg-chip:focus-visible,.cfg-icon-btn:focus-visible,.cfg-ph:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+@media (prefers-reduced-motion:reduce){
+  .cfg-stage,.cfg-tpl,.cfg-resp,.cfg-switch-track,.cfg-switch-track::after,
+  .cfg-icon-btn,.cfg-chip,.cfg-ph,.cfg-swatch,.cfg-stage-icon{transition-duration:.01ms;}
+  .cfg-tpl{animation:none;}
+  .cfg-saved{animation:none;opacity:1;}
+  .cfg-skel{animation:none;}
+}
