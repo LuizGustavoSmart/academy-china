@@ -177,6 +177,8 @@ function ParticipantFinanceModal({
         updated_at: "",
       };
   });
+  const somaParcelas = parcelasExibidas.reduce((total, parcela) => total + Number(parcela.valor || 0), 0);
+  const diferenca = Math.round((form.valor_pago - somaParcelas) * 100) / 100;
 
   const save = () => {
     const valor = form.valor_pago;
@@ -262,7 +264,7 @@ function ParticipantFinanceModal({
       <div style={{ fontSize: 11, color: "var(--text3)", margin: "-5px 0 10px" }}>
         {estruturaEmPrevia
           ? "Prévia atualizada. Salve o financeiro para criar as novas parcelas e liberar a edição individual."
-          : "Edite qualquer parcela. O saldo do contrato será redistribuído automaticamente entre as demais."}
+          : "Edite cada parcela livremente (ex.: 50% + 25% + 25%). As demais não são recalculadas — a soma precisa fechar com o valor total do contrato."}
       </div>
       <div className="table-wrap">
         <table>
@@ -294,14 +296,20 @@ function ParticipantFinanceModal({
                     onCommit={(value) => {
                       if (estruturaEmPrevia) return;
                       if (value === Number(parcela.valor)) return;
+                      const outras = parcelasExibidas
+                        .filter((item) => item.id !== parcela.id)
+                        .reduce((total, item) => total + Number(item.valor || 0), 0);
+                      if (Math.round((outras + value) * 100) > Math.round(form.valor_pago * 100)) {
+                        setError("A soma das parcelas ultrapassa o valor total do contrato.");
+                        return;
+                      }
                       setError(null);
                       updateParcela.mutate(
                         { id: parcela.id, patch: { valor: value } },
-                        { onError: (cause) => setError(cause instanceof Error ? cause.message : "Não foi possível redistribuir as parcelas.") },
+                        { onError: (cause) => setError(cause instanceof Error ? cause.message : "Não foi possível salvar o valor da parcela.") },
                       );
                     }}
                   />
-                  {parcela.valor_manual && <span style={{ fontSize: 9, color: "var(--text3)" }}>ajuste manual</span>}
                 </td>
                 <td style={{ textAlign: "center" }}>
                   <input
@@ -321,7 +329,13 @@ function ParticipantFinanceModal({
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, fontSize: 12 }}>
         <span style={{ color: "var(--text3)" }}>{pagas.length} de {parcelasExibidas.length} parcela(s) paga(s)</span>
-        <strong style={{ color: "var(--teal)" }}>Recebido: {fmtBRL(recebido)}</strong>
+        <span style={{ display: "flex", gap: 16 }}>
+          <span style={{ color: diferenca === 0 ? "var(--text3)" : "var(--accent)" }}>
+            Soma das parcelas: {fmtBRL(somaParcelas)} / {fmtBRL(form.valor_pago)}
+            {diferenca !== 0 && ` (faltam ${fmtBRL(diferenca)})`}
+          </span>
+          <strong style={{ color: "var(--teal)" }}>Recebido: {fmtBRL(recebido)}</strong>
+        </span>
       </div>
       {error && <div className="modal-inline-error"><i className="ti ti-alert-circle" /> {error}</div>}
       <div className="flex-end">
