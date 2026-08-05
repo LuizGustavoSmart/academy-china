@@ -770,47 +770,6 @@ function distributeAutomaticParcelas(
   });
 }
 
-function redistributeEditedParcela(
-  parcelas: ParcelaPagamento[],
-  targetId: string,
-  targetValue: number,
-): ParcelaPagamento[] {
-  if (parcelas.length === 0) {
-    throw new Error("Não foi possível localizar as parcelas deste contrato.");
-  }
-  const totalCentavos = parcelas.reduce(
-    (total, parcela) => total + Math.round(Number(parcela.valor || 0) * 100),
-    0,
-  );
-  let next = parcelas.map((parcela) => parcela.id === targetId
-    ? { ...parcela, valor: targetValue, valor_manual: true }
-    : { ...parcela });
-
-  if (next.length === 1) {
-    if (Math.round(targetValue * 100) !== totalCentavos) {
-      throw new Error("A única parcela deve ter o mesmo valor do contrato.");
-    }
-    return next;
-  }
-
-  if (!next.some((parcela) => !parcela.valor_manual)) {
-    const compensation = [...next]
-      .filter((parcela) => parcela.id !== targetId)
-      .sort((a, b) => b.numero - a.numero)[0];
-    next = next.map((parcela) => parcela.id === compensation.id
-      ? { ...parcela, valor_manual: false }
-      : parcela);
-  }
-
-  const manualCentavos = next
-    .filter((parcela) => parcela.valor_manual)
-    .reduce((total, parcela) => total + Math.round(Number(parcela.valor || 0) * 100), 0);
-  if (manualCentavos > totalCentavos) {
-    throw new Error("A soma das parcelas manuais ultrapassa o valor do contrato.");
-  }
-  return distributeAutomaticParcelas(next, totalCentavos);
-}
-
 function buildLocalParcelas(participants: Participant[]): ParcelaPagamento[] {
   const overrides = readLocalParcelas();
   const now = new Date().toISOString();
