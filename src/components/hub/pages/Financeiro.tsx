@@ -159,6 +159,8 @@ function ParticipantFinanceModal({
   const parcelasExibidas = Array.from({ length: quantidadePreview }, (_, index) => {
     const numero = index + 1;
     const existente = existentesPorNumero.get(numero);
+    // Fora da prévia, o valor salvo manda — inclusive ajustes livres como 50% + 25% + 25%.
+    if (existente && !estruturaEmPrevia) return existente;
     const valorCentavos = numero === quantidadePreview
       ? totalCentavosPreview - baseCentavosPreview * (quantidadePreview - 1)
       : baseCentavosPreview;
@@ -192,16 +194,17 @@ function ParticipantFinanceModal({
       return;
     }
     setError(null);
+    const patch: Partial<Participant> = {
+      tier: form.tier,
+      contrato_status: form.contrato_status,
+    };
+    // O trigger do banco redistribui as parcelas igualmente sempre que valor_pago
+    // ou parcelas entram no UPDATE — mesmo sem mudança. Só envia quando mudou de
+    // fato, senão os ajustes livres de cada parcela seriam apagados ao salvar.
+    if (valor !== Number(participant.valor_pago || 0)) patch.valor_pago = valor;
+    if (quantidade !== Math.max(1, Number(participant.parcelas) || 1)) patch.parcelas = quantidade;
     updateParticipant.mutate(
-      {
-        id: participant.id,
-        patch: {
-          tier: form.tier,
-          valor_pago: valor,
-          parcelas: quantidade,
-          contrato_status: form.contrato_status,
-        },
-      },
+      { id: participant.id, patch },
       {
         onSuccess: onClose,
         onError: () => setError("Não foi possível salvar. Revise os dados e tente novamente."),
