@@ -138,10 +138,15 @@ const SUBTABS: Record<string, { id: string; label: string; icon: string }[]> = {
   config: [
     { id: "dash", label: "Responsáveis", icon: "ti-users-plus" },
     { id: "emails", label: "Automação de E-mails", icon: "ti-mail-cog" },
+    { id: "usuarios", label: "Usuários", icon: "ti-user-shield" },
   ],
 };
 
 function Index() {
+  return <AuthGate>{(signOut, email) => <Shell signOut={signOut} email={email} />}</AuthGate>;
+}
+
+function Shell({ signOut, email }: { signOut: () => void; email: string }) {
   const [collapsed, setCollapsed] = useState(false);
   const [tab, setTab] = useState<Tab>("preop");
   const [sub, setSub] = useState<string>("dash");
@@ -161,7 +166,7 @@ function Index() {
   const subtabs = SUBTABS[tab];
 
   return (
-    <AuthGate>
+    <>
       <div className="app-shell">
         <nav className={`sidebar${collapsed ? " collapsed" : ""}`}>
           <div className="sidebar-brand" style={{ padding: "10px 16px 8px", display: "flex", justifyContent: "center" }}>
@@ -237,6 +242,10 @@ function Index() {
             <div className="header-status">
               <i className="ti ti-clock" /> Pré-operacional em curso
             </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--text3)" }}>
+              {email}
+              <button className="btn-secondary" onClick={signOut}><i className="ti ti-logout" /> Sair</button>
+            </div>
           </div>
 
           {subtabs && (
@@ -270,7 +279,7 @@ function Index() {
           </div>
         </div>
       </div>
-    </AuthGate>
+    </>
   );
 }
 
