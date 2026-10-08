@@ -40,6 +40,17 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
+  // Exige usuário logado com papel admin.
+  const token = (req.headers.get("Authorization") ?? "").replace("Bearer ", "");
+  if (!token) return json({ error: "unauthorized" }, 401);
+  const userClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  const { data: userData } = await userClient.auth.getUser(token);
+  if (!userData?.user) return json({ error: "unauthorized" }, 401);
+  const { data: isAdmin } = await userClient.rpc("has_role", { _user_id: userData.user.id, _role: "admin" });
+  if (!isAdmin) return json({ error: "forbidden" }, 403);
+
   let body: Payload;
   try {
     body = await req.json();
