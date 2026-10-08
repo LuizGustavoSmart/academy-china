@@ -15,90 +15,75 @@ import { usePendencias } from "@/lib/hub-api";
 import menuLogo from "@/assets/china2026-academy-logo.png.asset.json";
 
 import hubCss from "../../styles-hub.css?url";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 
-const SESSION_KEY = "academy_hub_auth";
-const SENHA = "Matter@2026";
+type GateState = "loading" | "forbidden" | "ok";
 
-function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
-  const [value, setValue] = useState("");
-  const [error, setError] = useState(false);
-
-  const submit = () => {
-    if (value === SENHA) {
-      localStorage.setItem(SESSION_KEY, "1");
-      onUnlock();
-    } else {
-      setError(true);
-      setValue("");
-    }
-  };
-
-  return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "var(--bg)",
-    }}>
-      <div style={{
-        background: "var(--surface)",
-        border: ".5px solid var(--border)",
-        borderRadius: "var(--radius)",
-        padding: "40px 48px",
-        width: 360,
-        display: "flex",
-        flexDirection: "column",
-        gap: 20,
-      }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 28, marginBottom: 8 }}>
-            <i className="ti ti-map-2" style={{ color: "var(--accent)" }} />
-          </div>
-          <div style={{ fontSize: 17, fontWeight: 600 }}>Academy China 2026</div>
-          <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 4 }}>Matter Academy · Plataforma Operacional</div>
-        </div>
-
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">Senha de acesso</label>
-          <input
-            className="form-input"
-            type="password"
-            placeholder="Digite a senha"
-            value={value}
-            autoFocus
-            onChange={(e) => { setValue(e.target.value); setError(false); }}
-            onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
-            style={error ? { borderColor: "var(--accent)" } : undefined}
-          />
-          {error && (
-            <div style={{ fontSize: 11, color: "var(--accent)", marginTop: 6 }}>
-              <i className="ti ti-alert-circle" /> Senha incorreta. Tente novamente.
-            </div>
-          )}
-        </div>
-
-        <button className="btn-primary" onClick={submit} style={{ width: "100%", justifyContent: "center" }}>
-          Entrar
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function AuthGate({ children }: { children: ReactNode }) {
-  const [unlocked, setUnlocked] = useState(true);
+function AuthGate({ children }: { children: (signOut: () => void, email: string) => ReactNode }) {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [state, setState] = useState<GateState>("loading");
+  const [email, setEmail] = useState("");
 
   useEffect(() => {
-    if (localStorage.getItem(SESSION_KEY) === "1") setUnlocked(true);
-  }, []);
+    let alive = true;
+    const check = async () => {
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+      if (!user) { navigate({ to: "/login", replace: true }); return; }
+      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+      if (!alive) return;
+      setEmail(user.email ?? "");
+      setState(isAdmin ? "ok" : "forbidden");
+      if (isAdmin) {
+        const k = `admin_log_${user.id}`;
+        if (!sessionStorage.getItem(k)) {
+          sessionStorage.setItem(k, "1");
+          void supabase.from("admin_access_log").insert({ user_id: user.id, email: user.email, acao: "acesso_admin" });
+        }
+      }
+    };
+    void check();
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") navigate({ to: "/login", replace: true });
+    });
+    return () => { alive = false; sub.subscription.unsubscribe(); };
+  }, [navigate]);
 
-  if (!unlocked) return <PasswordGate onUnlock={() => setUnlocked(true)} />;
-  return <>{children}</>;
+  const signOut = async () => {
+    await qc.cancelQueries();
+    qc.clear();
+    await supabase.auth.signOut();
+    navigate({ to: "/login", replace: true });
+  };
+
+  if (state === "loading") return <div style={{ minHeight: "100vh", background: "var(--bg)" }} />;
+  if (state === "forbidden") {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 40, fontWeight: 700 }}>403</div>
+          <div style={{ margin: "8px 0 16px", color: "var(--text3)" }}>Sua conta ({email}) não tem permissão de administrador.</div>
+          <button className="btn-primary" onClick={signOut}>Sair</button>
+        </div>
+      </div>
+    );
+  }
+  return <>{children(signOut, email)}</>;
 }
 
 export const Route = createFileRoute("/admin/")({
+  ssr: false,
   head: () => ({
+    meta: [
+      { title: "CRM — Academy China 2026" },
+      { name: "description", content: "Plataforma operacional restrita da Academy China 2026." },
+      { property: "og:title", content: "CRM — Academy China 2026" },
+      { property: "og:description", content: "Plataforma operacional restrita." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
     links: [
       { rel: "stylesheet", href: hubCss },
       { rel: "stylesheet", href: "https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" },
@@ -153,10 +138,15 @@ const SUBTABS: Record<string, { id: string; label: string; icon: string }[]> = {
   config: [
     { id: "dash", label: "Responsáveis", icon: "ti-users-plus" },
     { id: "emails", label: "Automação de E-mails", icon: "ti-mail-cog" },
+    { id: "usuarios", label: "Usuários", icon: "ti-user-shield" },
   ],
 };
 
 function Index() {
+  return <AuthGate>{(signOut, email) => <Shell signOut={signOut} email={email} />}</AuthGate>;
+}
+
+function Shell({ signOut, email }: { signOut: () => void; email: string }) {
   const [collapsed, setCollapsed] = useState(false);
   const [tab, setTab] = useState<Tab>("preop");
   const [sub, setSub] = useState<string>("dash");
@@ -176,7 +166,7 @@ function Index() {
   const subtabs = SUBTABS[tab];
 
   return (
-    <AuthGate>
+    <>
       <div className="app-shell">
         <nav className={`sidebar${collapsed ? " collapsed" : ""}`}>
           <div className="sidebar-brand" style={{ padding: "10px 16px 8px", display: "flex", justifyContent: "center" }}>
@@ -252,6 +242,10 @@ function Index() {
             <div className="header-status">
               <i className="ti ti-clock" /> Pré-operacional em curso
             </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--text3)" }}>
+              {email}
+              <button className="btn-secondary" onClick={signOut}><i className="ti ti-logout" /> Sair</button>
+            </div>
           </div>
 
           {subtabs && (
@@ -285,7 +279,7 @@ function Index() {
           </div>
         </div>
       </div>
-    </AuthGate>
+    </>
   );
 }
 

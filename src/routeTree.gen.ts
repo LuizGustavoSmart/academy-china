@@ -9,11 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ApiPublicLeadsRouteImport } from './routes/api/public/leads'
 import { Route as ApiPublicHooksSyncChinaSheetRouteImport } from './routes/api/public/hooks/sync-china-sheet'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -38,12 +50,16 @@ const ApiPublicHooksSyncChinaSheetRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/leads': typeof ApiPublicLeadsRoute
   '/api/public/hooks/sync-china-sheet': typeof ApiPublicHooksSyncChinaSheetRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AdminIndexRoute
   '/api/public/leads': typeof ApiPublicLeadsRoute
   '/api/public/hooks/sync-china-sheet': typeof ApiPublicHooksSyncChinaSheetRoute
@@ -51,6 +67,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/leads': typeof ApiPublicLeadsRoute
   '/api/public/hooks/sync-china-sheet': typeof ApiPublicHooksSyncChinaSheetRoute
@@ -59,18 +77,24 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/login'
+    | '/reset-password'
     | '/admin/'
     | '/api/public/leads'
     | '/api/public/hooks/sync-china-sheet'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/login'
+    | '/reset-password'
     | '/admin'
     | '/api/public/leads'
     | '/api/public/hooks/sync-china-sheet'
   id:
     | '__root__'
     | '/'
+    | '/login'
+    | '/reset-password'
     | '/admin/'
     | '/api/public/leads'
     | '/api/public/hooks/sync-china-sheet'
@@ -78,6 +102,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   AdminIndexRoute: typeof AdminIndexRoute
   ApiPublicLeadsRoute: typeof ApiPublicLeadsRoute
   ApiPublicHooksSyncChinaSheetRoute: typeof ApiPublicHooksSyncChinaSheetRoute
@@ -85,6 +111,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -118,6 +158,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   AdminIndexRoute: AdminIndexRoute,
   ApiPublicLeadsRoute: ApiPublicLeadsRoute,
   ApiPublicHooksSyncChinaSheetRoute: ApiPublicHooksSyncChinaSheetRoute,
