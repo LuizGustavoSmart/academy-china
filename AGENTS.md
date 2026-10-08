@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Admin access is enforced by RLS policies using has_role(auth.uid(), admin) on every CRM table, plus admin checks inside server functions and edge functions; never add anon policies to CRM tables, because the UI gate alone is bypassable.
